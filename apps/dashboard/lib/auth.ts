@@ -1,0 +1,280 @@
+import { betterAuth } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
+import { dash, sentinel } from "@better-auth/infra";
+import { oneTap, organization } from "better-auth/plugins";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import * as schema from "@trynotifly/db";
+
+// import { resend } from "@/lib/resend";
+
+const connection = postgres(process.env.DATABASE_URL!);
+
+const db = drizzle(connection, { schema });
+
+export const auth = betterAuth({
+  database: db,
+
+  appName: "TryNotifly",
+
+  secret: process.env.BETTER_AUTH_SECRET,
+
+  baseURL: process.env.BETTER_AUTH_URL,
+
+  trustedOrigins:
+    process.env.NODE_ENV === "production"
+      ? [
+          "https://dashboard.trynotifly.com",
+          "https://trynotifly.com",
+          "https://docs.trynotifly.com",
+        ]
+      : [
+          "http://localhost:3000",
+          "http://localhost:3001",
+          "http://localhost:3002",
+        ],
+
+  emailAndPassword: {
+    enabled: true,
+
+    minPasswordLength: 8,
+
+    maxPasswordLength: 32,
+
+    requireEmailVerification: true,
+
+    autoSignIn: true,
+
+    revokeSessionsOnPasswordReset: true,
+
+    resetPasswordTokenExpiresIn: 60 * 60,
+
+    sendResetPassword: async ({ user, url }) => {
+      /**
+       * TODO:
+       * Send password reset email using Resend
+       */
+
+      console.log("Send reset password email", {
+        email: user.email,
+        url,
+      });
+
+      // Example:
+      // await resend.emails.send({
+      //   from: "TryNotifly <noreply@trynotifly.com>",
+      //   to: user.email,
+      //   subject: "Reset your password",
+      //   html: `<a href="${url}">Reset Password</a>`,
+      // });
+    },
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+  },
+
+  plugins: [
+    nextCookies(),
+
+    dash({
+      apiKey: process.env.BETTER_AUTH_API_KEY,
+
+      activityTracking: {
+        enabled: true,
+        updateInterval: 300000,
+      },
+    }),
+
+    sentinel({
+      apiKey: process.env.BETTER_AUTH_API_KEY,
+
+      security: {
+        credentialStuffing: {
+          enabled: true,
+
+          thresholds: {
+            challenge: 5,
+            block: 10,
+          },
+        },
+
+        velocity: {
+          enabled: true,
+          maxSignupsPerVisitor: 5,
+          action: "challenge",
+        },
+
+        botBlocking: {
+          action: "challenge",
+        },
+
+        suspiciousIpBlocking: {
+          action: "block",
+        },
+
+        emailValidation: {
+          enabled: true,
+          strictness: "medium",
+          action: "block",
+        },
+      },
+    }),
+
+    organization({
+      allowUserToCreateOrganization: true,
+
+      creatorRole: "owner",
+
+      organizationLimit: 5,
+
+      membershipLimit: 50,
+
+      invitationExpiresIn: 7 * 24 * 60 * 60,
+
+      requireEmailVerificationOnInvitation: true,
+    }),
+
+    oneTap({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+    }),
+  ],
+
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+
+    updateAge: 60 * 60 * 24, // 1 day
+
+    cookieCache: {
+      enabled: true,
+
+      maxAge: 60 * 5, // 5 minutes
+    },
+  },
+
+  account: {
+    encryptOAuthTokens: true,
+
+    accountLinking: {
+      enabled: true,
+
+      trustedProviders: [
+        "google",
+        "github",
+        "email-password",
+      ],
+
+      allowDifferentEmails: false,
+    },
+  },
+
+  advanced: {
+    crossSubDomainCookies:
+      process.env.NODE_ENV === "production"
+        ? {
+            enabled: true,
+            domain: ".trynotifly.com",
+          }
+        : undefined,
+
+    cookiePrefix: "trynotifly_",
+
+    defaultCookieAttributes: {
+      secure: process.env.NODE_ENV === "production",
+
+      httpOnly: true,
+
+      sameSite: "lax",
+
+      path: "/",
+    },
+
+    database: {
+      generateId: false,
+
+      defaultFindManyLimit: 100,
+    },
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+
+    autoSignInAfterVerification: true,
+
+    expiresIn: 60 * 60,
+
+    sendVerificationEmail: async ({ user, url }) => {
+      /**
+       * TODO:
+       * Send verification email using Resend
+       */
+
+      console.log("Send verification email", {
+        email: user.email,
+        url,
+      });
+
+      // Example:
+      // await resend.emails.send({
+      //   from: "TryNotifly <noreply@trynotifly.com>",
+      //   to: user.email,
+      //   subject: "Verify your email",
+      //   html: `<a href="${url}">Verify Email</a>`,
+      // });
+    },
+  },
+
+  user: {
+    deleteUser: {
+      enabled: true,
+
+      sendDeleteAccountVerification: async ({ user, url }) => {
+        /**
+         * TODO:
+         * Send delete confirmation email
+         */
+
+        console.log("Delete account verification", {
+          email: user.email,
+          url,
+        });
+      },
+
+      beforeDelete: async (user) => {
+        /**
+         * TODO:
+         * Cleanup before deletion
+         *
+         * Example:
+         * - revoke API keys
+         * - delete workspaces
+         * - remove uploads
+         * - cancel subscriptions
+         */
+      },
+
+      afterDelete: async (user) => {
+        /**
+         * TODO:
+         * Post-delete cleanup/logging
+         */
+      },
+    },
+  },
+
+  ipAddress: {
+    ipAddressHeaders: [
+      "cf-connecting-ip",
+      "x-forwarded-for",
+      "x-real-ip",
+    ],
+  },
+});

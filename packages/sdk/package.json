@@ -1,0 +1,24 @@
+{
+  "name": "@trynotifly/sdk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+
+  "exports": {
+    ".": "./src/index.ts"
+  },
+
+  "types": "./src/index.ts",
+
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts"
+  },
+
+  "dependencies": {},
+
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "@types/node": "^24.3.0"
+  }
+}
