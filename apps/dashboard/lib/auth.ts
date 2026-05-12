@@ -2,18 +2,16 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { dash, sentinel } from "@better-auth/infra";
 import { oneTap, organization } from "better-auth/plugins";
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
-import * as schema from "@trynotifly/db";
+import * as authschema from "@trynotifly/db";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 // import { resend } from "@/lib/resend";
 
-const connection = postgres(process.env.DATABASE_URL!);
-
-const db = drizzle(connection, { schema });
-
 export const auth = betterAuth({
-  database: db,
+  database: drizzleAdapter(authschema.db, {
+    provider: "pg",
+    schema: authschema,
+  }),
 
   appName: "TryNotifly",
 
@@ -39,7 +37,7 @@ export const auth = betterAuth({
 
     minPasswordLength: 8,
 
-    maxPasswordLength: 32,
+    maxPasswordLength: 64,
 
     requireEmailVerification: true,
 
@@ -155,7 +153,7 @@ export const auth = betterAuth({
 
     cookieCache: {
       enabled: true,
-
+      strategy: "jwe",
       maxAge: 60 * 5, // 5 minutes
     },
   },
@@ -166,11 +164,7 @@ export const auth = betterAuth({
     accountLinking: {
       enabled: true,
 
-      trustedProviders: [
-        "google",
-        "github",
-        "email-password",
-      ],
+      trustedProviders: ["google", "github", "email-password"],
 
       allowDifferentEmails: false,
     },
@@ -198,7 +192,7 @@ export const auth = betterAuth({
     },
 
     database: {
-      generateId: false,
+      generateId: "uuid",
 
       defaultFindManyLimit: 100,
     },
@@ -271,10 +265,10 @@ export const auth = betterAuth({
   },
 
   ipAddress: {
-    ipAddressHeaders: [
-      "cf-connecting-ip",
-      "x-forwarded-for",
-      "x-real-ip",
-    ],
+    ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"],
+  },
+
+  experimental: {
+    joins: true, // Enable database joins for better performance
   },
 });

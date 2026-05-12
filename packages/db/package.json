@@ -11,8 +11,8 @@
   "types": "./src/index.ts",
 
   "scripts": {
-    "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate",
+    "gen": "drizzle-kit generate",
+    "mig": "drizzle-kit migrate",
     "push": "drizzle-kit push"
   },
 
