@@ -4,6 +4,7 @@ import { dash, sentinel } from "@better-auth/infra";
 import { oneTap, organization } from "better-auth/plugins";
 import * as authschema from "@trynotifly/db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { resend } from "../resend";
 
 // import { resend } from "@/lib/resend";
 
@@ -81,8 +82,6 @@ export const auth = betterAuth({
   },
 
   plugins: [
-    nextCookies(),
-
     dash({
       apiKey: process.env.BETTER_AUTH_API_KEY,
 
@@ -144,6 +143,8 @@ export const auth = betterAuth({
     oneTap({
       clientId: process.env.GOOGLE_CLIENT_ID!,
     }),
+
+    nextCookies(),
   ],
 
   session: {
@@ -206,23 +207,24 @@ export const auth = betterAuth({
     expiresIn: 60 * 60,
 
     sendVerificationEmail: async ({ user, url }) => {
-      /**
-       * TODO:
-       * Send verification email using Resend
-       */
+      await resend.emails.send({
+        from: "TryNotifly <noreply@yashbabani.com>",
+        to: user.email,
+        subject: "Verify your email",
+        html: `
+      <div>
+        <h1>Verify your email</h1>
 
-      console.log("Send verification email", {
-        email: user.email,
-        url,
+        <p>
+          Click the button below to verify your account.
+        </p>
+
+        <a href="${url}">
+          Verify Email
+        </a>
+      </div>
+    `,
       });
-
-      // Example:
-      // await resend.emails.send({
-      //   from: "TryNotifly <noreply@trynotifly.com>",
-      //   to: user.email,
-      //   subject: "Verify your email",
-      //   html: `<a href="${url}">Verify Email</a>`,
-      // });
     },
   },
 
