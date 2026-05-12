@@ -1,5 +1,5 @@
 {
-  "id": "172e9e0c-c973-45ac-af04-a76b208dd059",
+  "id": "1a966d51-f75b-4aea-9df2-2fae7d3ad238",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1814,7 +1814,175 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.company_type": {
+      "name": "company_type",
+      "schema": "public",
+      "values": [
+        "individual",
+        "sole_proprietorship",
+        "partnership",
+        "private_limited",
+        "public_limited",
+        "llp",
+        "enterprise",
+        "government",
+        "nonprofit",
+        "startup",
+        "other"
+      ]
+    },
+    "public.estimated_monthly_events": {
+      "name": "estimated_monthly_events",
+      "schema": "public",
+      "values": [
+        "0_1k",
+        "1k_10k",
+        "10k_100k",
+        "100k_1m",
+        "1m_10m",
+        "10m_100m",
+        "100m_plus"
+      ]
+    },
+    "public.industry": {
+      "name": "industry",
+      "schema": "public",
+      "values": [
+        "saas",
+        "ecommerce",
+        "finance",
+        "healthcare",
+        "education",
+        "marketing",
+        "logistics",
+        "gaming",
+        "government",
+        "real_estate",
+        "hospitality",
+        "manufacturing",
+        "telecommunications",
+        "media",
+        "technology",
+        "nonprofit",
+        "other"
+      ]
+    },
+    "public.invitation_status": {
+      "name": "invitation_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "accepted",
+        "expired",
+        "revoked"
+      ]
+    },
+    "public.onboarding_step": {
+      "name": "onboarding_step",
+      "schema": "public",
+      "values": [
+        "organization",
+        "workspace",
+        "use_case",
+        "team_invite",
+        "completed"
+      ]
+    },
+    "public.organization_plan": {
+      "name": "organization_plan",
+      "schema": "public",
+      "values": [
+        "free",
+        "starter",
+        "pro",
+        "enterprise"
+      ]
+    },
+    "public.organization_size": {
+      "name": "organization_size",
+      "schema": "public",
+      "values": [
+        "1",
+        "2_10",
+        "11_50",
+        "51_200",
+        "201_500",
+        "501_1000",
+        "1000_plus"
+      ]
+    },
+    "public.primary_use_case": {
+      "name": "primary_use_case",
+      "schema": "public",
+      "values": [
+        "transactional_email",
+        "marketing_email",
+        "otp_auth",
+        "sms_notifications",
+        "push_notifications",
+        "whatsapp_notifications",
+        "system_alerts",
+        "customer_engagement",
+        "internal_tools",
+        "multi_channel_notifications",
+        "other"
+      ]
+    },
+    "public.subscription_status": {
+      "name": "subscription_status",
+      "schema": "public",
+      "values": [
+        "free",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ]
+    },
+    "public.tax_id_type": {
+      "name": "tax_id_type",
+      "schema": "public",
+      "values": [
+        "gstin",
+        "vat",
+        "ein",
+        "tin",
+        "ssn",
+        "pan",
+        "other"
+      ]
+    },
+    "public.workspace_environment": {
+      "name": "workspace_environment",
+      "schema": "public",
+      "values": [
+        "production",
+        "staging",
+        "development",
+        "testing"
+      ]
+    },
+    "public.workspace_role": {
+      "name": "workspace_role",
+      "schema": "public",
+      "values": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
+    },
+    "public.workspace_visibility": {
+      "name": "workspace_visibility",
+      "schema": "public",
+      "values": [
+        "private",
+        "organization"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

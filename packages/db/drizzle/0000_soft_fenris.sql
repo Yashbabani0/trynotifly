@@ -1,3 +1,16 @@
+CREATE TYPE "public"."company_type" AS ENUM('individual', 'sole_proprietorship', 'partnership', 'private_limited', 'public_limited', 'llp', 'enterprise', 'government', 'nonprofit', 'startup', 'other');--> statement-breakpoint
+CREATE TYPE "public"."estimated_monthly_events" AS ENUM('0_1k', '1k_10k', '10k_100k', '100k_1m', '1m_10m', '10m_100m', '100m_plus');--> statement-breakpoint
+CREATE TYPE "public"."industry" AS ENUM('saas', 'ecommerce', 'finance', 'healthcare', 'education', 'marketing', 'logistics', 'gaming', 'government', 'real_estate', 'hospitality', 'manufacturing', 'telecommunications', 'media', 'technology', 'nonprofit', 'other');--> statement-breakpoint
+CREATE TYPE "public"."invitation_status" AS ENUM('pending', 'accepted', 'expired', 'revoked');--> statement-breakpoint
+CREATE TYPE "public"."onboarding_step" AS ENUM('organization', 'workspace', 'use_case', 'team_invite', 'completed');--> statement-breakpoint
+CREATE TYPE "public"."organization_plan" AS ENUM('free', 'starter', 'pro', 'enterprise');--> statement-breakpoint
+CREATE TYPE "public"."organization_size" AS ENUM('1', '2_10', '11_50', '51_200', '201_500', '501_1000', '1000_plus');--> statement-breakpoint
+CREATE TYPE "public"."primary_use_case" AS ENUM('transactional_email', 'marketing_email', 'otp_auth', 'sms_notifications', 'push_notifications', 'whatsapp_notifications', 'system_alerts', 'customer_engagement', 'internal_tools', 'multi_channel_notifications', 'other');--> statement-breakpoint
+CREATE TYPE "public"."subscription_status" AS ENUM('free', 'trialing', 'active', 'past_due', 'canceled', 'unpaid');--> statement-breakpoint
+CREATE TYPE "public"."tax_id_type" AS ENUM('gstin', 'vat', 'ein', 'tin', 'ssn', 'pan', 'other');--> statement-breakpoint
+CREATE TYPE "public"."workspace_environment" AS ENUM('production', 'staging', 'development', 'testing');--> statement-breakpoint
+CREATE TYPE "public"."workspace_role" AS ENUM('owner', 'admin', 'member', 'viewer');--> statement-breakpoint
+CREATE TYPE "public"."workspace_visibility" AS ENUM('private', 'organization');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid() NOT NULL,
 	"account_id" text NOT NULL,

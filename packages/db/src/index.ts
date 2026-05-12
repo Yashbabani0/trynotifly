@@ -10,3 +10,5 @@ export const db = drizzle(client, {
   logger: process.env.LOG_LEVEL === "debug",
   schema,
 });
+
+export * from "./db";
