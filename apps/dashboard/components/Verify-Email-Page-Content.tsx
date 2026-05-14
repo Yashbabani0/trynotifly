@@ -1,22 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "react-toastify";
-import { Loader2, RefreshCcw } from "lucide-react";
+import { Loader2, Mail, RefreshCcw } from "lucide-react";
 
 import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/lib/utils";
 import {
+  AuthBottomLink,
   AuthHeader,
-  AuthLeftPanel,
   AuthShell,
-  Highlight,
-  MobileTopRightLink,
-  PulsingMailIcon,
-  TopRightLink,
-  VerifyStatusCard,
 } from "@/components/auth";
 
 function subscribeToStorage(cb: () => void) {
@@ -31,6 +25,7 @@ function readPendingEmail() {
 export default function VerifyEmailPageContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [sentRecently, setSentRecently] = useState(false);
   const email = useSyncExternalStore(
     subscribeToStorage,
     readPendingEmail,
@@ -45,7 +40,7 @@ export default function VerifyEmailPageContent() {
       email ?? localStorage.getItem("pending_verification_email");
 
     if (!target) {
-      toast.error("No email found.");
+      toast.error("We couldn't find an email to verify. Please sign in again.");
       setLoading(false);
       return;
     }
@@ -55,7 +50,9 @@ export default function VerifyEmailPageContent() {
         email: target,
         callbackURL: "/dashboard",
       });
-      toast.success("Verification email sent successfully.");
+      setSentRecently(true);
+      toast.success("Verification email sent. Check your inbox.");
+      setTimeout(() => setSentRecently(false), 30_000);
     } catch {
       toast.error("Failed to send verification email. Please try again.");
     } finally {
@@ -87,78 +84,63 @@ export default function VerifyEmailPageContent() {
   }, [router]);
 
   return (
-    <AuthShell
-      leftPanel={
-        <AuthLeftPanel
-          tag="verifying inbox"
-          headline={
-            <>
-              One link to go.
-              <br />
-              <Highlight>We&apos;re watching</Highlight> for it.
-            </>
-          }
-          description="We poll your session every few seconds — the moment your email is verified, we'll drop you straight into the dashboard."
-          supportCard={<VerifyStatusCard email={email} />}
-        />
-      }
-      topRight={
-        <TopRightLink
-          prompt="Wrong account?"
-          href="/signin"
-          cta="Sign in instead"
-        />
-      }
-      mobileTopRight={<MobileTopRightLink href="/signin" label="Sign in" />}
-    >
+    <AuthShell>
       <AuthHeader
         eyebrow="00 · Verify email"
         title="Check your inbox"
         description={
           email
-            ? "We sent a verification link to your inbox. This page will refresh automatically once you confirm."
+            ? `We sent a verification link to ${email}. This page refreshes automatically once you confirm.`
             : "We sent a verification link to your inbox. Open it from this device to continue."
         }
       />
 
-      <div className="flex items-start gap-3.5 rounded-md border border-border/70 bg-card/30 px-3.5 py-3">
-        <PulsingMailIcon />
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground/85 uppercase">
+      {/* Status banner */}
+      <div className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary"
+          style={{
+            boxShadow:
+              "inset 0 0 0 1px color-mix(in oklch, var(--primary) 15%, transparent)",
+          }}
+        >
+          <Mail className="size-4" strokeWidth={2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12.5px] font-medium tracking-tight text-foreground">
             Awaiting confirmation
           </p>
-          <p className="truncate text-[13px] font-medium tracking-tight text-foreground">
+          <p className="truncate text-[11.5px] text-muted-foreground">
             {email ?? "your inbox"}
           </p>
         </div>
-        <span className="mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground/70 uppercase">
-          <Loader2 className="size-3 animate-spin" strokeWidth={2.25} />
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground/80 uppercase">
+          <Loader2 className="size-3 animate-spin" strokeWidth={2.5} />
           polling
         </span>
       </div>
 
+      {/* Resend */}
       <button
         type="button"
         onClick={resendVerificationEmail}
-        disabled={loading}
+        disabled={loading || sentRecently}
         className={cn(
-          "group mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border/70 bg-card/40 px-3 text-[12.5px] font-medium text-foreground/90",
-          "transition-all duration-200 ease-out",
-          "hover:-translate-y-px hover:border-border hover:bg-card/70 hover:text-foreground",
-          "active:translate-y-0 active:bg-card/55",
+          "group mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-[13.5px] font-medium text-foreground/90",
+          "transition-[background-color,border-color,color] duration-150 ease-out",
+          "hover:border-border/80 hover:bg-card/80 hover:text-foreground",
+          "active:bg-card/60",
           "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
           "disabled:pointer-events-none disabled:opacity-55",
         )}
-        style={{
-          boxShadow:
-            "inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 5%, transparent), 0 1px 0 0 color-mix(in oklch, black 25%, transparent), 0 1px 2px -1px color-mix(in oklch, black 30%, transparent)",
-        }}
       >
         {loading ? (
           <>
             <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
             <span>Sending…</span>
           </>
+        ) : sentRecently ? (
+          <span>Email sent — check your inbox</span>
         ) : (
           <>
             <RefreshCcw
@@ -170,15 +152,15 @@ export default function VerifyEmailPageContent() {
         )}
       </button>
 
-      <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
-        Didn&apos;t mean to land here?{" "}
-        <Link
-          href="/signin"
-          className="text-foreground underline-offset-4 hover:underline"
-        >
-          Sign in with a different account
-        </Link>
+      <p className="mt-3 text-center text-[11.5px] leading-relaxed text-muted-foreground">
+        Can&apos;t find it? Check your spam folder.
       </p>
+
+      <AuthBottomLink
+        prompt="Wrong account?"
+        href="/signin"
+        cta="Sign in with a different one"
+      />
     </AuthShell>
   );
 }

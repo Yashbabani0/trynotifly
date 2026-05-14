@@ -11,22 +11,18 @@ import { authClient } from "@/lib/auth/auth-client";
 import { passwordSchema } from "@/lib/auth/password-validations";
 import { cn } from "@/lib/utils";
 import {
+  AuthBottomLink,
   AuthDivider,
   AuthErrorBlock,
   AuthHeader,
   AuthInput,
-  AuthLeftPanel,
   AuthShell,
   AuthSubmitButton,
-  EventLogCard,
   FieldShell,
-  Highlight,
-  MobileTopRightLink,
   OAuthGroup,
   type OAuthProvider,
   PasswordChecklist,
   PasswordToggle,
-  TopRightLink,
   getPasswordRuleStates,
 } from "@/components/auth";
 
@@ -124,34 +120,11 @@ export default function SignUpForm() {
   const isBusy = loading || oauthLoading !== null;
 
   return (
-    <AuthShell
-      leftPanel={
-        <AuthLeftPanel
-          tag="v2.4 · public beta"
-          headline={
-            <>
-              Ship notifications
-              <br />
-              your users <Highlight>actually read</Highlight>.
-            </>
-          }
-          description="One API for transactional email, SMS, WhatsApp, and push. Routing, retries, and deliverability handled — so you can keep writing product code."
-          supportCard={<EventLogCard />}
-        />
-      }
-      topRight={
-        <TopRightLink
-          prompt="Already a member?"
-          href="/signin"
-          cta="Sign in"
-        />
-      }
-      mobileTopRight={<MobileTopRightLink href="/signin" label="Sign in" />}
-    >
+    <AuthShell>
       <AuthHeader
         eyebrow="01 · Create account"
-        title="Get started with TryNotifly"
-        description="Free for development. No credit card required."
+        title="Create your account"
+        description="Start sending in under five minutes. Free for development — no credit card required."
       />
 
       <OAuthGroup
@@ -162,7 +135,7 @@ export default function SignUpForm() {
 
       <AuthDivider />
 
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FieldShell htmlFor="name" label="Full name">
           <AuthInput
             id="name"
@@ -172,7 +145,7 @@ export default function SignUpForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={isBusy}
-            icon={<User2 className="size-3.5" strokeWidth={2} />}
+            icon={<User2 className="size-4" strokeWidth={2} />}
           />
         </FieldShell>
 
@@ -185,7 +158,7 @@ export default function SignUpForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isBusy}
-            icon={<Mail className="size-3.5" strokeWidth={2} />}
+            icon={<Mail className="size-4" strokeWidth={2} />}
           />
         </FieldShell>
 
@@ -209,13 +182,13 @@ export default function SignUpForm() {
             id="password"
             type={showPassword ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="Min. 8 characters"
+            placeholder="Create a strong password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
             disabled={isBusy}
-            icon={<Lock className="size-3.5" strokeWidth={2} />}
+            icon={<Lock className="size-4" strokeWidth={2} />}
             trailing={
               <PasswordToggle
                 visible={showPassword}
@@ -253,7 +226,7 @@ export default function SignUpForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             disabled={isBusy}
-            icon={<Lock className="size-3.5" strokeWidth={2} />}
+            icon={<Lock className="size-4" strokeWidth={2} />}
             trailing={
               <PasswordToggle
                 visible={showConfirm}
@@ -273,8 +246,8 @@ export default function SignUpForm() {
           Create account
         </AuthSubmitButton>
 
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-          By signing up, you agree to our{" "}
+        <p className="pt-1 text-center text-[11.5px] leading-relaxed text-muted-foreground">
+          By creating an account, you agree to our{" "}
           <Link
             href="/terms"
             className="text-foreground underline-offset-4 hover:underline"
@@ -291,6 +264,12 @@ export default function SignUpForm() {
           .
         </p>
       </form>
+
+      <AuthBottomLink
+        prompt="Already have an account?"
+        href="/signin"
+        cta="Sign in"
+      />
     </AuthShell>
   );
 }

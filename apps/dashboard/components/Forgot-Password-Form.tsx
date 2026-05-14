@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { z } from "zod";
@@ -8,17 +7,13 @@ import { Mail } from "lucide-react";
 
 import { authClient } from "@/lib/auth/auth-client";
 import {
+  AuthBottomLink,
   AuthErrorBlock,
   AuthHeader,
   AuthInput,
-  AuthLeftPanel,
   AuthShell,
   AuthSubmitButton,
   FieldShell,
-  Highlight,
-  MobileTopRightLink,
-  RecoveryStepsCard,
-  TopRightLink,
 } from "@/components/auth";
 
 const forgotPasswordSchema = z.object({
@@ -54,7 +49,7 @@ export default function ForgotPasswordForm() {
       });
       setSent(true);
       toast.success(
-        "If an account exists for this email, a password reset link has been sent.",
+        "If an account exists for this email, a reset link is on its way.",
       );
     } catch {
       toast.error("Failed to send password reset email. Please try again.");
@@ -64,41 +59,18 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <AuthShell
-      leftPanel={
-        <AuthLeftPanel
-          tag="account recovery"
-          headline={
-            <>
-              Locked out?
-              <br />
-              We&apos;ll <Highlight>get you back in</Highlight>.
-            </>
-          }
-          description="Reset links are signed, single-use, and time-boxed. We never store recoverable passwords — only argon2id hashes."
-          supportCard={<RecoveryStepsCard />}
-        />
-      }
-      topRight={
-        <TopRightLink
-          prompt="Remembered it?"
-          href="/signin"
-          cta="Back to sign in"
-        />
-      }
-      mobileTopRight={<MobileTopRightLink href="/signin" label="Sign in" />}
-    >
+    <AuthShell>
       <AuthHeader
-        eyebrow="03 · Recover access"
-        title="Reset your password"
+        eyebrow="03 · Forgot password"
+        title={sent ? "Check your inbox" : "Forgot your password?"}
         description={
           sent
-            ? "Check your inbox — if the address is on file, a reset link is on its way."
-            : "Enter the email tied to your TryNotifly account and we'll send a signed reset link."
+            ? `If an account exists for ${email || "that address"}, we just sent a reset link. It's valid for 30 minutes.`
+            : "Enter the email you signed up with and we'll send you a secure link to reset your password."
         }
       />
 
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FieldShell htmlFor="email" label="Work email">
           <AuthInput
             id="email"
@@ -108,7 +80,7 @@ export default function ForgotPasswordForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
-            icon={<Mail className="size-3.5" strokeWidth={2} />}
+            icon={<Mail className="size-4" strokeWidth={2} />}
           />
         </FieldShell>
 
@@ -121,17 +93,13 @@ export default function ForgotPasswordForm() {
         >
           {sent ? "Resend reset link" : "Send reset link"}
         </AuthSubmitButton>
-
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground lg:hidden">
-          Remembered it?{" "}
-          <Link
-            href="/signin"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Back to sign in
-          </Link>
-        </p>
       </form>
+
+      <AuthBottomLink
+        prompt="Remembered it?"
+        href="/signin"
+        cta="Back to sign in"
+      />
     </AuthShell>
   );
 }

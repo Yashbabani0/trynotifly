@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 /**
  * FieldShell — label row + slot for the input + inline error.
- * Used for every field across every auth form.
  */
 export function FieldShell({
   htmlFor,
@@ -28,7 +27,7 @@ export function FieldShell({
       <div className="flex items-baseline justify-between gap-3">
         <label
           htmlFor={htmlFor}
-          className="font-mono text-[10.5px] font-medium tracking-[0.14em] text-muted-foreground/90 uppercase"
+          className="text-[12px] font-medium tracking-tight text-foreground/85"
         >
           {label}
         </label>
@@ -36,15 +35,16 @@ export function FieldShell({
       </div>
       {children}
       {error ? (
-        <p className="text-[11px] leading-tight text-destructive">{error}</p>
+        <p className="text-[11.5px] leading-tight text-destructive/90">
+          {error}
+        </p>
       ) : null}
     </div>
   );
 }
 
 /**
- * AuthInput — the styled `<input>` shared by every auth form.
- * Supports left icon and a trailing slot (eye toggle, etc.).
+ * AuthInput — primary text input, dark surface, lime focus ring, optional icon / trailing slot.
  */
 export function AuthInput({
   icon,
@@ -58,35 +58,31 @@ export function AuthInput({
   return (
     <div
       className={cn(
-        "group relative rounded-md transition-shadow duration-200",
-        "focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_14%,transparent)]",
+        "group relative rounded-md transition-shadow duration-150",
+        "focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_18%,transparent)]",
       )}
     >
       {icon ? (
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground/80 transition-colors duration-200 group-focus-within:text-foreground">
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground/70 transition-colors duration-150 group-focus-within:text-primary">
           {icon}
         </span>
       ) : null}
       <input
         {...props}
         className={cn(
-          "h-10 w-full rounded-md border border-border/70 bg-card/30 px-3 text-[13px] text-foreground outline-none",
-          "transition-[border-color,background-color,color] duration-200 ease-out",
+          "h-11 w-full rounded-md border border-border bg-card text-[13.5px] text-foreground outline-none",
+          "transition-[border-color,background-color] duration-150 ease-out",
           "placeholder:text-muted-foreground/55",
-          "hover:border-border hover:bg-card/45",
-          "focus:border-primary/45 focus:bg-card/55",
+          "hover:border-border/80",
+          "focus:border-primary/60",
           "disabled:cursor-not-allowed disabled:opacity-55",
-          icon ? "pl-9" : "",
-          trailing ? "pr-10" : "",
+          icon ? "pl-10" : "px-3.5",
+          trailing ? "pr-11" : icon ? "pr-3.5" : "",
           className,
         )}
-        style={{
-          boxShadow:
-            "inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent), inset 0 0 0 1px color-mix(in oklch, black 18%, transparent)",
-        }}
       />
       {trailing ? (
-        <span className="absolute inset-y-0 right-2 flex items-center">
+        <span className="absolute inset-y-0 right-1.5 flex items-center">
           {trailing}
         </span>
       ) : null}
@@ -95,7 +91,7 @@ export function AuthInput({
 }
 
 /**
- * PasswordToggle — eye / eye-off button paired with AuthInput's trailing slot.
+ * PasswordToggle — eye / eye-off button used in the trailing slot of AuthInput.
  */
 export function PasswordToggle({
   visible,
@@ -110,7 +106,7 @@ export function PasswordToggle({
       onClick={onToggle}
       tabIndex={-1}
       aria-label={visible ? "Hide password" : "Show password"}
-      className="rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+      className="rounded-sm p-1.5 text-muted-foreground/70 transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
     >
       {visible ? (
         <EyeOff className="size-3.5" strokeWidth={2} />
@@ -122,7 +118,7 @@ export function PasswordToggle({
 }
 
 /**
- * AuthSubmitButton — the primary CTA with sheen wipe and arrow nudge.
+ * AuthSubmitButton — full-width lime CTA with arrow nudge and loading state.
  */
 export function AuthSubmitButton({
   loading,
@@ -142,29 +138,21 @@ export function AuthSubmitButton({
       type="submit"
       disabled={disabled}
       className={cn(
-        "group relative mt-1 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-md bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground",
-        "transition-all duration-200 ease-out",
-        "hover:-translate-y-px hover:bg-primary/95",
-        "active:translate-y-0",
+        "group relative mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-semibold tracking-tight text-primary-foreground",
+        "transition-[background-color,transform,box-shadow] duration-150 ease-out",
+        "hover:bg-primary/90",
+        "active:translate-y-px",
         "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
-        "disabled:pointer-events-none disabled:opacity-70",
+        "disabled:pointer-events-none disabled:opacity-60",
       )}
       style={{
         boxShadow:
-          "inset 0 1px 0 0 color-mix(in oklch, white 25%, transparent), inset 0 0 0 1px color-mix(in oklch, var(--primary) 40%, transparent), 0 1px 0 0 color-mix(in oklch, black 30%, transparent), 0 6px 16px -6px color-mix(in oklch, var(--primary) 35%, transparent)",
+          "inset 0 1px 0 0 color-mix(in oklch, white 20%, transparent), 0 1px 0 0 color-mix(in oklch, black 30%, transparent)",
       }}
     >
-      <span
-        aria-hidden
-        className="absolute inset-0 -translate-x-full opacity-0 transition-all duration-500 ease-out group-hover:translate-x-full group-hover:opacity-100"
-        style={{
-          background:
-            "linear-gradient(110deg, transparent 30%, color-mix(in oklch, white 18%, transparent) 50%, transparent 70%)",
-        }}
-      />
       {loading ? (
         <>
-          <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
+          <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
           <span>{loadingLabel}</span>
         </>
       ) : (
@@ -173,7 +161,7 @@ export function AuthSubmitButton({
           {withArrow ? (
             <ArrowRight
               className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-              strokeWidth={2.25}
+              strokeWidth={2.5}
             />
           ) : null}
         </>
@@ -183,7 +171,7 @@ export function AuthSubmitButton({
 }
 
 /**
- * AuthErrorBlock — animated inline error banner displayed beneath inputs.
+ * AuthErrorBlock — animated inline error banner.
  */
 export function AuthErrorBlock({ error }: { error: string }) {
   return (
@@ -198,7 +186,7 @@ export function AuthErrorBlock({ error }: { error: string }) {
           className="overflow-hidden"
         >
           <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/6 px-3 py-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-destructive shadow-[0_0_6px_color-mix(in_oklch,var(--destructive)_55%,transparent)]" />
+            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-destructive" />
             <p className="text-[11.5px] leading-snug text-destructive/95">
               {error}
             </p>

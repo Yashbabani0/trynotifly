@@ -9,7 +9,7 @@ import { GitHubIcon, GoogleIcon } from "./icons";
 export type OAuthProvider = "google" | "github";
 
 /**
- * OAuthGroup — the two-up Google / GitHub button row.
+ * OAuthGroup — Google + GitHub buttons side-by-side.
  */
 export function OAuthGroup({
   loadingProvider,
@@ -21,7 +21,7 @@ export function OAuthGroup({
   onSelect: (provider: OAuthProvider) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2.5">
       <OAuthButton
         onClick={() => onSelect("google")}
         disabled={disabled}
@@ -59,17 +59,13 @@ function OAuthButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group relative inline-flex h-10 items-center justify-center gap-2.5 rounded-md border border-border/70 bg-card/40 px-3 text-[12.5px] font-medium text-foreground/90",
-        "transition-all duration-200 ease-out",
-        "hover:-translate-y-px hover:border-border hover:bg-card/70 hover:text-foreground",
-        "active:translate-y-0 active:bg-card/55",
+        "group inline-flex h-11 items-center justify-center gap-2.5 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground/90",
+        "transition-[background-color,border-color,color] duration-150 ease-out",
+        "hover:border-border/80 hover:bg-card/80 hover:text-foreground",
+        "active:bg-card/60",
         "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
         "disabled:pointer-events-none disabled:opacity-55",
       )}
-      style={{
-        boxShadow:
-          "inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 5%, transparent), 0 1px 0 0 color-mix(in oklch, black 25%, transparent), 0 1px 2px -1px color-mix(in oklch, black 30%, transparent)",
-      }}
     >
       <span className="flex size-4 items-center justify-center">
         {loading ? (

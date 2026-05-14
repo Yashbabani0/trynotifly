@@ -11,19 +11,15 @@ import { authClient } from "@/lib/auth/auth-client";
 import { passwordSchema } from "@/lib/auth/password-validations";
 import { cn } from "@/lib/utils";
 import {
+  AuthBottomLink,
   AuthErrorBlock,
   AuthHeader,
   AuthInput,
-  AuthLeftPanel,
   AuthShell,
   AuthSubmitButton,
   FieldShell,
-  Highlight,
-  MobileTopRightLink,
   PasswordChecklist,
   PasswordToggle,
-  SecurityCard,
-  TopRightLink,
   getPasswordRuleStates,
 } from "@/components/auth";
 
@@ -48,6 +44,7 @@ export default function ResetPasswordForm() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const passwordRules = useMemo(
     () => getPasswordRuleStates(password),
@@ -61,7 +58,7 @@ export default function ResetPasswordForm() {
     e.preventDefault();
     if (loading) return;
     if (!token) {
-      toast.error("Invalid or expired reset token.");
+      toast.error("This reset link is invalid or expired.");
       return;
     }
 
@@ -83,49 +80,73 @@ export default function ResetPasswordForm() {
     setLoading(true);
     try {
       await authClient.resetPassword({ newPassword: password, token });
-      toast.success("Password reset successfully. Please sign in.");
-      router.replace("/signin");
+      setSuccess(true);
+      toast.success("Password reset successfully. Redirecting to sign in…");
+      setTimeout(() => router.replace("/signin"), 1200);
     } catch {
       toast.error(
-        "Failed to reset password. The link may be invalid or expired.",
+        "This reset link is invalid or expired. Request a new password reset email.",
       );
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <AuthShell
-      leftPanel={
-        <AuthLeftPanel
-          tag="credential rotation"
-          headline={
-            <>
-              Set a new password.
-              <br />
-              <Highlight>Sign back in</Highlight> in seconds.
-            </>
-          }
-          description="Your old credential is invalidated the moment you confirm. All other active sessions are signed out automatically."
-          supportCard={<SecurityCard />}
+  // Invalid token — show a clear, friendly recovery prompt.
+  if (!token) {
+    return (
+      <AuthShell>
+        <AuthHeader
+          eyebrow="04 · Reset password"
+          title="This link won't work"
+          description="This reset link is invalid or expired. Request a new password reset email to continue."
         />
-      }
-      topRight={
-        <TopRightLink prompt="All good?" href="/signin" cta="Back to sign in" />
-      }
-      mobileTopRight={<MobileTopRightLink href="/signin" label="Sign in" />}
-    >
+        <Link
+          href="/forgot-password"
+          className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-semibold tracking-tight text-primary-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-primary/90 active:translate-y-px"
+          style={{
+            boxShadow:
+              "inset 0 1px 0 0 color-mix(in oklch, white 20%, transparent), 0 1px 0 0 color-mix(in oklch, black 30%, transparent)",
+          }}
+        >
+          Request a new link
+        </Link>
+        <AuthBottomLink
+          prompt="Remembered it?"
+          href="/signin"
+          cta="Back to sign in"
+        />
+      </AuthShell>
+    );
+  }
+
+  // Success state — short confirmation before redirect.
+  if (success) {
+    return (
+      <AuthShell>
+        <AuthHeader
+          eyebrow="04 · Reset password"
+          title="Password updated"
+          description="Your password has been reset. Redirecting you to sign in…"
+        />
+        <AuthBottomLink
+          prompt="Taking too long?"
+          href="/signin"
+          cta="Go to sign in"
+        />
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell>
       <AuthHeader
-        eyebrow="04 · New password"
-        title="Choose a new password"
-        description={
-          token
-            ? "Pick something memorable — we'll sign all your other sessions out for safety."
-            : "This link is missing a token. Request a fresh one from the sign-in page."
-        }
+        eyebrow="04 · Reset password"
+        title="Set a new password"
+        description="Choose a strong password you haven't used before. We'll sign all your other sessions out for safety."
       />
 
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FieldShell
           htmlFor="password"
           label="New password"
@@ -146,13 +167,13 @@ export default function ResetPasswordForm() {
             id="password"
             type={showPassword ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="Min. 8 characters"
+            placeholder="Create a strong password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
-            disabled={loading || !token}
-            icon={<Lock className="size-3.5" strokeWidth={2} />}
+            disabled={loading}
+            icon={<Lock className="size-4" strokeWidth={2} />}
             trailing={
               <PasswordToggle
                 visible={showPassword}
@@ -189,8 +210,8 @@ export default function ResetPasswordForm() {
             placeholder="Re-enter your new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            disabled={loading || !token}
-            icon={<Lock className="size-3.5" strokeWidth={2} />}
+            disabled={loading}
+            icon={<Lock className="size-4" strokeWidth={2} />}
             trailing={
               <PasswordToggle
                 visible={showConfirm}
@@ -205,20 +226,17 @@ export default function ResetPasswordForm() {
         <AuthSubmitButton
           loading={loading}
           loadingLabel="Resetting password…"
-          disabled={loading || !token}
+          disabled={loading}
         >
           Reset password
         </AuthSubmitButton>
-
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground lg:hidden">
-          <Link
-            href="/signin"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Back to sign in
-          </Link>
-        </p>
       </form>
+
+      <AuthBottomLink
+        prompt="Remembered it?"
+        href="/signin"
+        cta="Back to sign in"
+      />
     </AuthShell>
   );
 }

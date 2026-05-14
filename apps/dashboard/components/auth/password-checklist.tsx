@@ -12,6 +12,10 @@ type Rule = {
   test: (value: string) => boolean;
 };
 
+/**
+ * Rules mirror the server-side `passwordSchema` exactly so users never see
+ * a passing checklist that then fails validation.
+ */
 const RULES: Rule[] = [
   { id: "length", label: "8+ characters", test: (v) => v.length >= 8 },
   { id: "upper", label: "Uppercase letter", test: (v) => /[A-Z]/.test(v) },
@@ -56,14 +60,7 @@ export function PasswordChecklist({
           className={cn("overflow-hidden", className)}
           style={{ willChange: "height, opacity, transform" }}
         >
-          <div
-            className="mt-2.5 rounded-md border border-border/60 bg-card/35 px-3 py-2.5"
-            style={{
-              boxShadow:
-                "inset 0 1px 0 0 color-mix(in oklch, var(--foreground) 4%, transparent)",
-            }}
-          >
-            {/* Strength row */}
+          <div className="mt-2.5 space-y-2.5">
             <div className="flex items-center gap-3">
               <div className="relative h-0.75 flex-1 overflow-hidden rounded-full bg-foreground/6">
                 <motion.div
@@ -76,13 +73,9 @@ export function PasswordChecklist({
                       metCount === total
                         ? "var(--primary)"
                         : metCount >= 3
-                          ? "color-mix(in oklch, var(--primary) 75%, transparent)"
-                          : "color-mix(in oklch, var(--foreground) 35%, transparent)",
-                    boxShadow:
-                      metCount === total
-                        ? "0 0 8px color-mix(in oklch, var(--primary) 50%, transparent)"
-                        : "none",
-                    transition: "background 0.3s ease, box-shadow 0.3s ease",
+                          ? "color-mix(in oklch, var(--primary) 80%, transparent)"
+                          : "color-mix(in oklch, var(--foreground) 30%, transparent)",
+                    transition: "background 0.3s ease",
                   }}
                 />
               </div>
@@ -107,22 +100,21 @@ export function PasswordChecklist({
               </AnimatePresence>
             </div>
 
-            {/* Rule grid */}
-            <ul className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
               {states.map((rule) => (
                 <li
                   key={rule.id}
-                  className="flex items-center gap-2 text-[11px] leading-none"
+                  className="flex items-center gap-2 text-[11.5px] leading-none"
                 >
                   <motion.span
                     initial={false}
                     animate={{
                       backgroundColor: rule.met
-                        ? "color-mix(in oklch, var(--primary) 14%, transparent)"
+                        ? "color-mix(in oklch, var(--primary) 18%, transparent)"
                         : "color-mix(in oklch, var(--foreground) 4%, transparent)",
                       borderColor: rule.met
-                        ? "color-mix(in oklch, var(--primary) 45%, transparent)"
-                        : "color-mix(in oklch, var(--border) 80%, transparent)",
+                        ? "color-mix(in oklch, var(--primary) 55%, transparent)"
+                        : "color-mix(in oklch, var(--border) 100%, transparent)",
                       scale: rule.met ? 1 : 0.94,
                     }}
                     transition={{ duration: 0.24, ease: EASE }}
@@ -150,7 +142,7 @@ export function PasswordChecklist({
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0, opacity: 0 }}
                           transition={{ duration: 0.18, ease: EASE }}
-                          className="size-1 rounded-full bg-muted-foreground/35"
+                          className="size-1 rounded-full bg-muted-foreground/40"
                         />
                       )}
                     </AnimatePresence>
@@ -161,7 +153,7 @@ export function PasswordChecklist({
                     animate={{
                       color: rule.met
                         ? "color-mix(in oklch, var(--foreground) 92%, transparent)"
-                        : "color-mix(in oklch, var(--muted-foreground) 85%, transparent)",
+                        : "color-mix(in oklch, var(--muted-foreground) 90%, transparent)",
                     }}
                     transition={{ duration: 0.22 }}
                     className="font-medium tracking-tight"

@@ -4,18 +4,8 @@ export {
   AuthHeader,
   AuthFooter,
   AuthDivider,
-  TopRightLink,
-  MobileTopRightLink,
+  AuthBottomLink,
 } from "./shell";
-export { AuthLeftPanel, Highlight } from "./left-panel";
-export {
-  EventLogCard,
-  SessionStatsCard,
-  RecoveryStepsCard,
-  SecurityCard,
-  VerifyStatusCard,
-  PulsingMailIcon,
-} from "./cards";
 export {
   FieldShell,
   AuthInput,

@@ -9,21 +9,17 @@ import { Lock, Mail } from "lucide-react";
 
 import { authClient } from "@/lib/auth/auth-client";
 import {
+  AuthBottomLink,
   AuthDivider,
   AuthErrorBlock,
   AuthHeader,
   AuthInput,
-  AuthLeftPanel,
   AuthShell,
   AuthSubmitButton,
   FieldShell,
-  Highlight,
-  MobileTopRightLink,
   OAuthGroup,
   type OAuthProvider,
   PasswordToggle,
-  SessionStatsCard,
-  TopRightLink,
 } from "@/components/auth";
 
 const signInSchema = z.object({
@@ -94,34 +90,11 @@ export default function SignInForm() {
   const isBusy = loading || oauthLoading !== null;
 
   return (
-    <AuthShell
-      leftPanel={
-        <AuthLeftPanel
-          tag="uptime · 99.99%"
-          headline={
-            <>
-              Welcome back.
-              <br />
-              Your stack is <Highlight>still humming</Highlight>.
-            </>
-          }
-          description="Pick up where you left off — drill into traces, replay failed webhooks, and roll out new channels without touching deliverability code."
-          supportCard={<SessionStatsCard />}
-        />
-      }
-      topRight={
-        <TopRightLink
-          prompt="New to TryNotifly?"
-          href="/signup"
-          cta="Create account"
-        />
-      }
-      mobileTopRight={<MobileTopRightLink href="/signup" label="Sign up" />}
-    >
+    <AuthShell>
       <AuthHeader
         eyebrow="02 · Sign in"
-        title="Welcome back to TryNotifly"
-        description="Sign in to continue to your dashboard."
+        title="Welcome back"
+        description="Sign in to your TryNotifly account to continue."
       />
 
       <OAuthGroup
@@ -132,7 +105,7 @@ export default function SignInForm() {
 
       <AuthDivider />
 
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FieldShell htmlFor="email" label="Work email">
           <AuthInput
             id="email"
@@ -142,7 +115,7 @@ export default function SignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isBusy}
-            icon={<Mail className="size-3.5" strokeWidth={2} />}
+            icon={<Mail className="size-4" strokeWidth={2} />}
           />
         </FieldShell>
 
@@ -152,9 +125,9 @@ export default function SignInForm() {
           hint={
             <Link
               href="/forgot-password"
-              className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground/85 uppercase transition-colors hover:text-primary"
+              className="text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              Forgot?
+              Forgot password?
             </Link>
           }
         >
@@ -166,7 +139,7 @@ export default function SignInForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isBusy}
-            icon={<Lock className="size-3.5" strokeWidth={2} />}
+            icon={<Lock className="size-4" strokeWidth={2} />}
             trailing={
               <PasswordToggle
                 visible={showPassword}
@@ -185,17 +158,13 @@ export default function SignInForm() {
         >
           Sign in
         </AuthSubmitButton>
-
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground lg:hidden">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Create one
-          </Link>
-        </p>
       </form>
+
+      <AuthBottomLink
+        prompt="Don't have an account?"
+        href="/signup"
+        cta="Create one"
+      />
     </AuthShell>
   );
 }
