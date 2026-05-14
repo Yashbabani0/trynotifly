@@ -43,6 +43,7 @@ export const user = pgTable("user", {
   banned: boolean("banned").default(false).notNull(),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
+  deleted: boolean("deleted").default(false).notNull(),
   deletedAt: timestamp("deleted_at"),
   lastLoginAt: timestamp("last_login_at"),
   lastIpAddress: text("last_ip_address"),

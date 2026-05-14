@@ -1,42 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { z } from "zod";
-import { Lock, Mail, User2 } from "lucide-react";
+import { Lock } from "lucide-react";
 
 import { authClient } from "@/lib/auth/auth-client";
 import { passwordSchema } from "@/lib/auth/password-validations";
 import { cn } from "@/lib/utils";
 import {
-  AuthDivider,
   AuthErrorBlock,
   AuthHeader,
   AuthInput,
   AuthLeftPanel,
   AuthShell,
   AuthSubmitButton,
-  EventLogCard,
   FieldShell,
   Highlight,
   MobileTopRightLink,
-  OAuthGroup,
-  type OAuthProvider,
   PasswordChecklist,
   PasswordToggle,
+  SecurityCard,
   TopRightLink,
   getPasswordRuleStates,
 } from "@/components/auth";
 
-const signUpSchema = z
+const resetPasswordSchema = z
   .object({
-    name: z
-      .string()
-      .min(2, "Name must be at least 2 characters")
-      .max(50, "Name is too long"),
-    email: z.email("Please enter a valid email address"),
     password: passwordSchema,
     confirmPassword: z.string(),
   })
@@ -45,10 +37,10 @@ const signUpSchema = z
     path: ["confirmPassword"],
   });
 
-export default function SignUpForm() {
+export default function ResetPasswordForm() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +48,6 @@ export default function SignUpForm() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
 
   const passwordRules = useMemo(
     () => getPasswordRuleStates(password),
@@ -69,11 +60,14 @@ export default function SignUpForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (loading) return;
+    if (!token) {
+      toast.error("Invalid or expired reset token.");
+      return;
+    }
+
     setError("");
 
-    const validatedFields = signUpSchema.safeParse({
-      name,
-      email,
+    const validatedFields = resetPasswordSchema.safeParse({
       password,
       confirmPassword,
     });
@@ -88,110 +82,53 @@ export default function SignUpForm() {
 
     setLoading(true);
     try {
-      await authClient.signUp.email(
-        { name, email, password },
-        {
-          onSuccess: async () => {
-            localStorage.setItem("pending_verification_email", email);
-            toast.success("Account created successfully");
-            router.push("/verify-email");
-          },
-          onError: (ctx) => {
-            setError(ctx.error.message);
-            toast.error(ctx.error.message);
-          },
-        },
-      );
+      await authClient.resetPassword({ newPassword: password, token });
+      toast.success("Password reset successfully. Please sign in.");
+      router.replace("/signin");
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.error(
+        "Failed to reset password. The link may be invalid or expired.",
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  async function signUpWithProvider(provider: OAuthProvider) {
-    if (oauthLoading) return;
-    setOauthLoading(provider);
-    try {
-      await authClient.signIn.social({ provider, callbackURL: "/dashboard" });
-    } catch {
-      toast.error(`An error occurred while signing up with ${provider}.`);
-    } finally {
-      setOauthLoading(null);
-    }
-  }
-
-  const isBusy = loading || oauthLoading !== null;
-
   return (
     <AuthShell
       leftPanel={
         <AuthLeftPanel
-          tag="v2.4 · public beta"
+          tag="credential rotation"
           headline={
             <>
-              Ship notifications
+              Set a new password.
               <br />
-              your users <Highlight>actually read</Highlight>.
+              <Highlight>Sign back in</Highlight> in seconds.
             </>
           }
-          description="One API for transactional email, SMS, WhatsApp, and push. Routing, retries, and deliverability handled — so you can keep writing product code."
-          supportCard={<EventLogCard />}
+          description="Your old credential is invalidated the moment you confirm. All other active sessions are signed out automatically."
+          supportCard={<SecurityCard />}
         />
       }
       topRight={
-        <TopRightLink
-          prompt="Already a member?"
-          href="/signin"
-          cta="Sign in"
-        />
+        <TopRightLink prompt="All good?" href="/signin" cta="Back to sign in" />
       }
       mobileTopRight={<MobileTopRightLink href="/signin" label="Sign in" />}
     >
       <AuthHeader
-        eyebrow="01 · Create account"
-        title="Get started with TryNotifly"
-        description="Free for development. No credit card required."
+        eyebrow="04 · New password"
+        title="Choose a new password"
+        description={
+          token
+            ? "Pick something memorable — we'll sign all your other sessions out for safety."
+            : "This link is missing a token. Request a fresh one from the sign-in page."
+        }
       />
-
-      <OAuthGroup
-        loadingProvider={oauthLoading}
-        disabled={isBusy}
-        onSelect={signUpWithProvider}
-      />
-
-      <AuthDivider />
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
-        <FieldShell htmlFor="name" label="Full name">
-          <AuthInput
-            id="name"
-            type="text"
-            autoComplete="name"
-            placeholder="Ada Lovelace"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={isBusy}
-            icon={<User2 className="size-3.5" strokeWidth={2} />}
-          />
-        </FieldShell>
-
-        <FieldShell htmlFor="email" label="Work email">
-          <AuthInput
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isBusy}
-            icon={<Mail className="size-3.5" strokeWidth={2} />}
-          />
-        </FieldShell>
-
         <FieldShell
           htmlFor="password"
-          label="Password"
+          label="New password"
           hint={
             password.length > 0 ? (
               <span
@@ -214,7 +151,7 @@ export default function SignUpForm() {
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
-            disabled={isBusy}
+            disabled={loading || !token}
             icon={<Lock className="size-3.5" strokeWidth={2} />}
             trailing={
               <PasswordToggle
@@ -249,10 +186,10 @@ export default function SignUpForm() {
             id="confirmPassword"
             type={showConfirm ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="Re-enter your password"
+            placeholder="Re-enter your new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            disabled={isBusy}
+            disabled={loading || !token}
             icon={<Lock className="size-3.5" strokeWidth={2} />}
             trailing={
               <PasswordToggle
@@ -267,28 +204,19 @@ export default function SignUpForm() {
 
         <AuthSubmitButton
           loading={loading}
-          loadingLabel="Creating your account…"
-          disabled={isBusy}
+          loadingLabel="Resetting password…"
+          disabled={loading || !token}
         >
-          Create account
+          Reset password
         </AuthSubmitButton>
 
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-          By signing up, you agree to our{" "}
+        <p className="text-center text-[11px] leading-relaxed text-muted-foreground lg:hidden">
           <Link
-            href="/terms"
+            href="/signin"
             className="text-foreground underline-offset-4 hover:underline"
           >
-            Terms
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/privacy"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Privacy Policy
+            Back to sign in
           </Link>
-          .
         </p>
       </form>
     </AuthShell>

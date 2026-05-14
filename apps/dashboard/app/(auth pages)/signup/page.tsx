@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-
 import { requireSession } from "@/lib/auth/require-session";
-import SignInForm from "@/components/SignIn-Form";
+import SignUpForm from "@/components/SignUp-Form";
 
 export default async function Page() {
   const session = await requireSession(false);
@@ -10,9 +9,5 @@ export default async function Page() {
     redirect("/dashboard");
   }
 
-  return (
-    <div>
-      <SignInForm />
-    </div>
-  );
+  return <SignUpForm />;
 }

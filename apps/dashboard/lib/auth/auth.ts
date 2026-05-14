@@ -4,7 +4,15 @@ import { dash, sentinel } from "@better-auth/infra";
 import { oneTap, organization } from "better-auth/plugins";
 import * as authschema from "@trynotifly/db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { resend } from "../resend";
+import {
+  passwordResetRateLimit,
+  sendInvitationRateLimit,
+  verificationEmailRateLimit,
+} from "./ratelimit";
+import { sendVerificationEmail } from "@/lib/mail/send-verification-email";
+import { sendPasswordResetEmail } from "../mail/send-resetPassword-email";
+
+import { sendInvitationEmail } from "../mail/send-sendInvitation-email";
 
 // import { resend } from "@/lib/resend";
 
@@ -49,23 +57,16 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 60 * 60,
 
     sendResetPassword: async ({ user, url }) => {
-      /**
-       * TODO:
-       * Send password reset email using Resend
-       */
-
-      console.log("Send reset password email", {
-        email: user.email,
-        url,
-      });
-
-      // Example:
-      // await resend.emails.send({
-      //   from: "TryNotifly <noreply@trynotifly.com>",
-      //   to: user.email,
-      //   subject: "Reset your password",
-      //   html: `<a href="${url}">Reset Password</a>`,
-      // });
+      const { success } = await passwordResetRateLimit.limit(user.email);
+      if (!success) {
+        throw new Error("Too many password reset emails sent.");
+      }
+      await sendPasswordResetEmail(user.email, url);
+    },
+    onExistingUserSignUp: () => {
+      throw new Error(
+        "If further action is required, instructions will be sent to your email.",
+      );
     },
   },
 
@@ -107,7 +108,9 @@ export const auth = betterAuth({
         velocity: {
           enabled: true,
           maxSignupsPerVisitor: 5,
+          maxSignInsPerIp: 5,
           action: "challenge",
+          maxPasswordResetsPerIp: 5,
         },
 
         botBlocking: {
@@ -128,16 +131,35 @@ export const auth = betterAuth({
 
     organization({
       allowUserToCreateOrganization: true,
-
       creatorRole: "owner",
-
       organizationLimit: 5,
-
       membershipLimit: 50,
-
       invitationExpiresIn: 7 * 24 * 60 * 60,
-
       requireEmailVerificationOnInvitation: true,
+      cancelPendingInvitationsOnReInvite: true,
+      disableOrganizationDeletion: false,
+
+      sendInvitationEmail: async ({
+        email,
+        organization,
+        invitation,
+        inviter,
+      }) => {
+        const { success } = await sendInvitationRateLimit.limit(email);
+
+        if (!success) {
+          throw new Error("Too many invitations sent. Please try again later.");
+        }
+
+        const inviteUrl = `${process.env.BETTER_AUTH_URL}/accept-invitation/${invitation.id}`;
+
+        await sendInvitationEmail(
+          organization.name,
+          inviteUrl,
+          email,
+          inviter.user.name,
+        );
+      },
     }),
 
     oneTap({
@@ -160,13 +182,13 @@ export const auth = betterAuth({
   },
 
   account: {
+    modelName: "account",
+    storeAccountCookie: true,
     encryptOAuthTokens: true,
 
     accountLinking: {
       enabled: true,
-
       trustedProviders: ["google", "github", "email-password"],
-
       allowDifferentEmails: false,
     },
   },
@@ -201,68 +223,17 @@ export const auth = betterAuth({
 
   emailVerification: {
     sendOnSignUp: true,
-
     autoSignInAfterVerification: true,
 
     expiresIn: 60 * 60,
 
     sendVerificationEmail: async ({ user, url }) => {
-      await resend.emails.send({
-        from: "TryNotifly <noreply@yashbabani.com>",
-        to: user.email,
-        subject: "Verify your email",
-        html: `
-      <div>
-        <h1>Verify your email</h1>
+      const { success } = await verificationEmailRateLimit.limit(user.email);
 
-        <p>
-          Click the button below to verify your account.
-        </p>
-
-        <a href="${url}">
-          Verify Email
-        </a>
-      </div>
-    `,
-      });
-    },
-  },
-
-  user: {
-    deleteUser: {
-      enabled: true,
-
-      sendDeleteAccountVerification: async ({ user, url }) => {
-        /**
-         * TODO:
-         * Send delete confirmation email
-         */
-
-        console.log("Delete account verification", {
-          email: user.email,
-          url,
-        });
-      },
-
-      beforeDelete: async (user) => {
-        /**
-         * TODO:
-         * Cleanup before deletion
-         *
-         * Example:
-         * - revoke API keys
-         * - delete workspaces
-         * - remove uploads
-         * - cancel subscriptions
-         */
-      },
-
-      afterDelete: async (user) => {
-        /**
-         * TODO:
-         * Post-delete cleanup/logging
-         */
-      },
+      if (!success) {
+        throw new Error("Too many verification emails sent.");
+      }
+      await sendVerificationEmail(user.email, url);
     },
   },
 
