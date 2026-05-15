@@ -1,15 +1,8 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-export const organizationPlanEnum = pgEnum("organization_plan", [
-  "free",
-  "starter",
-  "pro",
-  "enterprise",
-]);
-
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "free",
-  "trialing",
+  "pending",
   "active",
   "past_due",
   "canceled",
@@ -62,9 +55,11 @@ export const industryEnum = pgEnum("industry", [
 
 export const onboardingStepEnum = pgEnum("onboarding_step", [
   "organization",
-  "workspace",
+  "plan",
   "use_case",
-  "team_invite",
+  "team",
+  "channels",
+  "first_event",
   "completed",
 ]);
 

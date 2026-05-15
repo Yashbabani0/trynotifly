@@ -17,6 +17,7 @@
     "better-auth": "1.6.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "country-list": "^2.4.1",
     "drizzle-orm": "0.45.2",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4",
+    "@types/country-list": "^2.1.4",
     "@types/node": "20",
     "@types/react": "19",
     "@types/react-dom": "19",

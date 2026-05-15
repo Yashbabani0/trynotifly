@@ -9,7 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { organization, user } from "./auth-schema";
+import { eventScales, notificationUseCases, organization, user } from "./auth-schema";
 import {
   estimatedMonthlyEventsEnum,
   primaryUseCaseEnum,
@@ -66,6 +66,11 @@ export const workspace = pgTable(
     )
       .default("0_1k")
       .notNull(),
+    primaryUseCaseId: text("primary_use_case_id").references(
+      () => notificationUseCases.id,
+    ),
+
+    eventScaleId: text("event_scale_id").references(() => eventScales.id),
     settings: jsonb("settings"),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", {

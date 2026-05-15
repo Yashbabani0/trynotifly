@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  integer,
 } from "drizzle-orm/pg-core";
 import {
   companyTypeEnum,
@@ -15,7 +16,6 @@ import {
   industryEnum,
   invitationStatusEnum,
   onboardingStepEnum,
-  organizationPlanEnum,
   organizationSizeEnum,
   primaryUseCaseEnum,
   subscriptionStatusEnum,
@@ -154,57 +154,16 @@ export const organization = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     logo: text("logo"),
-    plan: organizationPlanEnum("plan").default("free").notNull(),
-    billingEmail: text("billing_email"),
     website: text("website"),
     description: text("description"),
     industry: industryEnum("industry").default("other").notNull(),
     size: organizationSizeEnum("size").default("1").notNull(),
     country: text("country"),
     isVerified: boolean("is_verified").default(false).notNull(),
-    dodoCustomerId: text("dodo_customer_id"),
-    dodoSubscriptionId: text("dodo_subscription_id"),
-    subscriptionStatus: subscriptionStatusEnum("subscription_status")
-      .default("free")
-      .notNull(),
-    currentPeriodStart: timestamp("current_period_start", {
-      withTimezone: true,
-    }),
-    currentPeriodEnd: timestamp("current_period_end", {
-      withTimezone: true,
-    }),
-    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
-    deletedAt: timestamp("deleted_at", {
-      withTimezone: true,
-    }),
-    createdAt: timestamp("created_at", {
-      withTimezone: true,
-    })
-      .defaultNow()
-      .notNull(),
-    metadata: text("metadata"),
-    updatedAt: timestamp("updated_at", {
-      withTimezone: true,
-    })
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-    ownerUserId: uuid("owner_user_id").references(() => user.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    legalName: text("legal_name"),
-    companyType: companyTypeEnum("company_type").default("startup").notNull(),
-    taxIdType: taxIdTypeEnum("tax_id_type").default("gstin").notNull(),
-    taxId: text("tax_id"),
-    phoneNumber: text("phone_number"),
-    supportEmail: text("support_email"),
-    addressLine1: text("address_line_1"),
-    addressLine2: text("address_line_2"),
-    city: text("city"),
-    state: text("state"),
-    postalCode: text("postal_code"),
-    timezone: text("timezone"),
+    primaryUseCaseId: text("primary_use_case_id").references(
+      () => notificationUseCases.id,
+    ),
+    eventScaleId: text("event_scale_id").references(() => eventScales.id),
     onboardingStep: onboardingStepEnum("onboarding_step")
       .default("organization")
       .notNull(),
@@ -228,19 +187,205 @@ export const organization = pgTable(
     lastActivityAt: timestamp("last_activity_at", {
       withTimezone: true,
     }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    metadata: text("metadata"),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     uniqueIndex("organization_slug_uidx").on(table.slug),
-    index("organization_owner_idx").on(table.ownerUserId),
-    index("organization_plan_idx").on(table.plan),
     index("organization_country_idx").on(table.country),
     index("organization_industry_idx").on(table.industry),
-    index("organization_subscription_status_idx").on(table.subscriptionStatus),
     index("organization_onboarding_idx").on(table.onboardingCompleted),
     index("organization_created_at_idx").on(table.createdAt),
     index("organization_last_activity_idx").on(table.lastActivityAt),
   ],
 );
+
+export const organizationBilling = pgTable(
+  "organization_billing",
+  {
+    id: uuid("id")
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    dodoCustomerId: text("dodo_customer_id"),
+    dodoSubscriptionId: text("dodo_subscription_id"),
+    subscriptionStatus: subscriptionStatusEnum("subscription_status")
+      .default("free")
+      .notNull(),
+    plan: text("plan").default("free").notNull(),
+    billingEmail: text("billing_email"),
+    currentPeriodStart: timestamp("current_period_start", {
+      withTimezone: true,
+    }),
+    currentPeriodEnd: timestamp("current_period_end", {
+      withTimezone: true,
+    }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("organization_plan_idx").on(table.plan),
+    index("organization_subscription_status_idx").on(table.subscriptionStatus),
+    index("organization_billing_email_idx").on(table.billingEmail),
+    index("organization_dodo_customer_id_idx").on(table.dodoCustomerId),
+    index("organization_dodo_subscription_id_idx").on(table.dodoSubscriptionId),
+    index("organization_cancel_at_period_end_idx").on(table.cancelAtPeriodEnd),
+    uniqueIndex("organization_billing_org_uidx").on(table.organizationId),
+  ],
+);
+
+export const plan = pgTable(
+  "plan",
+  {
+    id: uuid("id")
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    description: text("description"),
+    monthlyPrice: integer("monthly_price").notNull(),
+    yearlyPrice: integer("yearly_price").notNull(),
+    yearlyDiscountPercent: integer("yearly_discount_percent")
+      .default(0)
+      .notNull(),
+    isEnterprise: boolean("is_enterprise").default(false).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+
+  (table) => [
+    uniqueIndex("plan_slug_uidx").on(table.slug),
+
+    index("plan_active_idx").on(table.isActive),
+
+    index("plan_sort_idx").on(table.sortOrder),
+  ],
+);
+
+export const planFeature = pgTable(
+  "plan_feature",
+  {
+    id: uuid("id")
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plan.id, {
+        onDelete: "cascade",
+      }),
+
+    label: text("label").notNull(),
+
+    sortOrder: integer("sort_order").default(0).notNull(),
+  },
+
+  (table) => [index("plan_feature_plan_idx").on(table.planId)],
+);
+
+export const organizationLegalDetails = pgTable(
+  "organization_legal_details",
+  {
+    id: uuid("id")
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    legalName: text("legal_name"),
+    companyType: companyTypeEnum("company_type").default("startup").notNull(),
+    taxIdType: taxIdTypeEnum("tax_id_type").default("gstin").notNull(),
+    taxId: text("tax_id"),
+    phoneNumber: text("phone_number"),
+    supportEmail: text("support_email"),
+    addressLine1: text("address_line_1"),
+    addressLine2: text("address_line_2"),
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postal_code"),
+    country: text("country"),
+    timezone: text("timezone"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("organization_legal_details_country_idx").on(table.country),
+    index("organization_legal_details_timezone_idx").on(table.timezone),
+    index("organization_legal_details_state_idx").on(table.state),
+    index("organization_legal_details_city_idx").on(table.city),
+    index("organization_legal_details_legal_name_idx").on(table.legalName),
+  ],
+);
+
+export const notificationUseCases = pgTable("notification_use_cases", {
+  id: text("id").primaryKey(),
+
+  slug: text("slug").notNull().unique(),
+
+  title: text("title").notNull(),
+
+  description: text("description").notNull(),
+
+  icon: text("icon"),
+
+  isActive: boolean("is_active").default(true).notNull(),
+
+  sortOrder: integer("sort_order").default(0).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const eventScales = pgTable("event_scales", {
+  id: text("id").primaryKey(),
+
+  slug: text("slug").notNull().unique(),
+
+  label: text("label").notNull(),
+
+  minEvents: integer("min_events"),
+
+  maxEvents: integer("max_events"),
+
+  sortOrder: integer("sort_order").default(0).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const member = pgTable(
   "member",
@@ -323,11 +468,6 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-export const organizationRelations = relations(organization, ({ many }) => ({
-  members: many(member),
-  invitations: many(invitation),
-}));
-
 export const memberRelations = relations(member, ({ one }) => ({
   organization: one(organization, {
     fields: [member.organizationId],
@@ -349,3 +489,25 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const organizationRelations = relations(
+  organization,
+  ({ many, one }) => ({
+    members: many(member),
+    invitations: many(invitation),
+
+    billing: one(organizationBilling),
+
+    legalDetails: one(organizationLegalDetails),
+  }),
+);
+
+export const organizationLegalDetailsRelations = relations(
+  organizationLegalDetails,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [organizationLegalDetails.organizationId],
+      references: [organization.id],
+    }),
+  }),
+);

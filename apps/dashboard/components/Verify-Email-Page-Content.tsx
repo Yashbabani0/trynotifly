@@ -70,7 +70,7 @@ export default function VerifyEmailPageContent() {
         if (session.data?.user?.emailVerified) {
           localStorage.removeItem("pending_verification_email");
           clearInterval(interval);
-          router.replace("/dashboard");
+          router.replace("/onboarding/organization");
           router.refresh();
         }
       } catch {

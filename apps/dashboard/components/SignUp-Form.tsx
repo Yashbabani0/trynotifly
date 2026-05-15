@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -109,7 +108,10 @@ export default function SignUpForm() {
     if (oauthLoading) return;
     setOauthLoading(provider);
     try {
-      await authClient.signIn.social({ provider, callbackURL: "/dashboard" });
+      await authClient.signIn.social({
+        provider,
+        callbackURL: "/onboarding/organization",
+      });
     } catch {
       toast.error(`An error occurred while signing up with ${provider}.`);
     } finally {
