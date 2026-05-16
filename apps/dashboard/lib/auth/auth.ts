@@ -12,7 +12,7 @@ import {
 import { sendVerificationEmail } from "@/lib/mail/send-verification-email";
 import { sendPasswordResetEmail } from "../mail/send-resetPassword-email";
 
-import { sendInvitationEmail } from "../mail/send-sendInvitation-email";
+import { sendInvitationEmail } from "../mail/send-Invitation-email";
 
 // import { resend } from "@/lib/resend";
 

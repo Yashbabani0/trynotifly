@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
-import { db } from "@trynotifly/db/";
 import {
   eq,
   organization,
   session,
   notificationUseCases,
   eventScales,
+  db,
 } from "@trynotifly/db";
 import { z } from "zod";
 

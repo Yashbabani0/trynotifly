@@ -140,7 +140,7 @@ export default function UseCaseForm({ useCases, eventScales }: Props) {
 
                     <div
                       className={clsx(
-                        "flex h-5 w-5 items-center justify-center rounded-full border transition-all",
+                        "flex h-5 w-5 shrink-0 aspect-square items-center justify-center rounded-full border transition-all",
                         isActive
                           ? "border-lime-500/40 bg-lime-500 text-black"
                           : "border-white/10 bg-black/30",

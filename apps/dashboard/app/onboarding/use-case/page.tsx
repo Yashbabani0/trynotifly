@@ -55,24 +55,23 @@ export default function UseCasePage() {
                 Step 03 · Use Case
               </div>
 
-              <h1 className="text-5xl font-semibold leading-[0.96] tracking-tighter xl:text-6xl flex items-start gap-4 flex-wrap">
+              <h1 className="text-5xl font-semibold leading-[0.96] tracking-tighter xl:text-6xl flex items-start gap-2 flex-col">
                 <div className="flex items-start gap-4">
                   <p>Configure</p>
                   <p>notification</p>
                 </div>
                 <br />
-                <p className="p-0 m-0">flows.</p>
+                <p>flows.</p>
               </h1>
-
-              <p className="mt-7 max-w-md text-[15px] leading-7 text-zinc-400">
+              <p className="mt-5 max-w-md text-[15px] leading-7 text-zinc-400">
                 Tailor routing, infrastructure defaults, and delivery
                 recommendations for your organization at scale.
               </p>
             </div>
 
             {/* Preview */}
-            <div className="relative mt-auto overflow-hidden rounded-[28px] border border-white/8 bg-white/[0.025] p-5 shadow-2xl backdrop-blur-xl">
-              <div className="absolute inset-0 bg-gradient-to-br from-lime-500/[0.03] via-transparent to-transparent" />
+            <div className="relative mt-auto overflow-hidden rounded-[28px] border border-white/8 bg-white/2.5 p-5 shadow-2xl backdrop-blur-xl">
+              <div className="absolute inset-0 bg-linear-to-br from-lime-500/3 via-transparent to-transparent" />
 
               <div className="relative">
                 <div className="mb-5 flex items-center justify-between">
@@ -141,10 +140,10 @@ export default function UseCasePage() {
 
         {/* RIGHT SIDE */}
         <section className="relative flex items-center justify-center px-6 py-8 lg:px-12">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
+          <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-black/60" />
 
           <div className="relative z-10 w-full max-w-3xl">
-            <div className="rounded-[30px] border border-white/8 bg-white/[0.025] p-8 shadow-[0_0_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+            <div className="rounded-[30px] border border-white/8 bg-white/2.5 p-8 shadow-[0_0_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
               <UseCaseForm useCases={useCases} eventScales={scales} />
             </div>
           </div>
