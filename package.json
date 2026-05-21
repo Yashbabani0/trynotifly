@@ -1,0 +1,19 @@
+{
+  "name": "trynotifly",
+  "private": true,
+  "version": "1.0.0",
+  "description": "TryNotifly monorepo",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "start": "pnpm -r start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "format": "pnpm -r format",
+    "clean": "pnpm -r clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
