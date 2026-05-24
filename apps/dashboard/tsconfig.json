@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+,     "../../packages/db/src/db/auth-schema.ts"  ],
   "exclude": ["node_modules"]
 }

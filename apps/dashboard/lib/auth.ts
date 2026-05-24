@@ -1,18 +1,29 @@
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import * as schema from "./auth-schema";
+import { db } from "@trynotifly/db";
+import * as auth_schema from "@/auth-schema";
 import { dash, sentinel } from "@better-auth/infra";
-
-const db = drizzle(new Pool({ connectionString: process.env.DATABASE_URL }), {
-  schema,
-});
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: "pg", schema }),
-  baseURL: "http://localhost:3000/",
-  emailAndPassword: { enabled: true },
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: auth_schema,
+    debugLogs: process.env.NODE_ENV === "development" ? true : false,
+  }),
+  baseURL: process.env.BETTER_AUTH_URL!,
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 64,
+    onExistingUserSignUp: () => {
+      throw new Error(
+        "If an account exists for this email, further instructions have been sent.",
+      );
+    },
+    resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
+    revokeSessionsOnPasswordReset: true,
+  },
   account: {
     modelName: "account",
     accountLinking: {
@@ -27,19 +38,26 @@ export const auth = betterAuth({
     useSecureCookies: true,
     ipAddress: {
       disableIpTracking: false,
+      ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"],
+    },
+    defaultCookieAttributes: {
+      sameSite: "lax",
+      ...(process.env.NODE_ENV === "production"
+        ? {
+            domain: ".trynotifly.com",
+          }
+        : {}),
     },
   },
   rateLimit: {
     modelName: "rate_limit",
     enabled: true,
     max: 100,
-    windowMs: 60 * 60 * 1000, // 1 hour
-    storage: "memory",
+    storage: "memory", // For production, will add a robust storage like Redis
   },
-  secret: process.env.AUTH_SECRET!,
+  secret: process.env.BETTER_AUTH_SECRET!,
   session: {
     modelName: "session",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     freshAge: 60 * 60, // 1 hour
     updateAge: 60 * 60 * 24, // 1 day
@@ -60,12 +78,12 @@ export const auth = betterAuth({
   },
   plugins: [
     dash({
-      apiKey: process.env.DASH_API_KEY!,
-      activityTracking: { enabled: true, updateInterval: 5000 },
+      apiKey: process.env.BETTER_AUTH_API_KEY!,
+      activityTracking: { enabled: true, updateInterval: 300000 },
       apiTimeout: 5000,
     }),
     sentinel({
-      apiKey: process.env.SENTINEL_API_KEY!,
+      apiKey: process.env.BETTER_AUTH_API_KEY!,
       security: {
         botBlocking: { action: "challenge" },
         compromisedPassword: {
@@ -86,4 +104,7 @@ export const auth = betterAuth({
       },
     }),
   ],
+  experimental: {
+    joins: true,
+  },
 });
