@@ -38,20 +38,10 @@ export const apiKey = pgTable(
     status: apiKeyStatus("status").notNull().default("ACTIVE"),
     lastUsedAt: timestamp("last_used_at"),
     revokedAt: timestamp("revoked_at"),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("organization_type_unique_idx").on(
-      table.organizationId,
-      table.type,
-    ),
+    index("organization_type_idx").on(table.organizationId, table.type),
     uniqueIndex("hashed_key_unique_idx").on(table.hashedKey),
     uniqueIndex("prefix_unique_idx").on(table.prefix),
     index("api_key_organization_id_idx").on(table.organizationId),

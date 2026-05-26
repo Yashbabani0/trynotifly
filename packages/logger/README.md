@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly/logger
 
 To install dependencies:
 

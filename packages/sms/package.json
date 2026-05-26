@@ -1,5 +1,5 @@
 {
-  "name": "@trynotifly/api",
+  "name": "@trynotifly/sms",
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
@@ -7,10 +7,5 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  },
-  "dependencies": {
-    "fastify": "^5.8.5",
-    "inngest": "^4.4.0",
-    "zod": "^4.4.3"
   }
 }

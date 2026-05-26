@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly/payment
 
 To install dependencies:
 

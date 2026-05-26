@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly/sms
 
 To install dependencies:
 

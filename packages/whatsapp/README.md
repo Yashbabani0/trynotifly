@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly/whatsapp
 
 To install dependencies:
 

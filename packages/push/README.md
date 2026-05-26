@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly/push
 
 To install dependencies:
 

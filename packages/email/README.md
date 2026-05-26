@@ -1,4 +1,4 @@
-# @trynotifly/api
+# @trynotifly@email
 
 To install dependencies:
 
