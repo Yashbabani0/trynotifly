@@ -1,11 +1,17 @@
 {
-  "name": "@trynotifly@email",
+  "name": "@trynotifly/email",
   "module": "src/index.ts",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1054.0"
   }
 }

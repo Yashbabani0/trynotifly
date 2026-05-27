@@ -3,6 +3,7 @@ import { db } from "@trynotifly/db";
 import * as auth_schema from "@/auth-schema";
 import { dash, sentinel } from "@better-auth/infra";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { organization } from "better-auth/plugins";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -102,6 +103,17 @@ export const auth = betterAuth({
           windowSeconds: 60 * 60, // 1 hour
         },
       },
+    }),
+    organization({
+      allowUserToCreateOrganization: true,
+      organizationModelName: "organization",
+      membershipModelName: "organization_membership",
+      creatorRole: "owner",
+      invitationExpiresIn: 60 * 60 * 24, // 24 hours
+      invitationLimit: 10,
+      membershipLimit: 100,
+      organizationLimit: 1,
+      cancelPendingInvitationsOnReInvite: true,
     }),
   ],
   experimental: {

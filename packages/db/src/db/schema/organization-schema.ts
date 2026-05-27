@@ -49,15 +49,10 @@ export const companyType = pgEnum("company_type", [
 export const organization = pgTable(
   "organization",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    name: varchar("name", {
-      length: 255,
-    }).notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, {
-        onDelete: "cascade",
-      }),
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
     estimatedMonthlyNotifications: integer("estimated_monthly_notifications")
       .notNull()
       .default(0),
@@ -83,41 +78,53 @@ export const organization = pgTable(
     deletedAt: timestamp("deleted_at"),
   },
   (table) => [
-    uniqueIndex("user_organization_unique_idx").on(table.userId, table.name),
     check("organization_balance_non_negative", sql`${table.balance} >= 0`),
+    uniqueIndex("organization_slug_uidx").on(table.slug),
   ],
 );
 
-export const organizationMember = pgTable(
+export const member = pgTable(
   "organization_member",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: uuid("organization_id")
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
       .notNull()
-      .references(() => organization.id, {
-        onDelete: "cascade",
-      }),
+      .references(() => organization.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
-      .references(() => user.id, {
-        onDelete: "cascade",
-      }),
-    role: organizationRole("role").notNull().default("MEMBER"),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").default("member").notNull(),
+    createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at")
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("organization_user_unique_idx").on(
-      table.organizationId,
-      table.userId,
-    ),
-    index("organization_member_user_id_idx").on(table.userId),
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
+  ],
+);
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
   ],
 );
 
@@ -178,11 +185,13 @@ export const organizationLegal = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("organization_legal_organization_unique_idx").on(table.organizationId),
+    uniqueIndex("organization_legal_organization_unique_idx").on(
+      table.organizationId,
+    ),
   ],
 );
 
 export type Organization = typeof organization.$inferSelect;
 export type NewOrganization = typeof organization.$inferInsert;
-export type OrganizationMember = typeof organizationMember.$inferSelect;
+export type OrganizationMember = typeof member.$inferSelect;
 export type OrganizationLegal = typeof organizationLegal.$inferSelect;
