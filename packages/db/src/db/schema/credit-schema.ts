@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -29,7 +30,7 @@ export const creditTransaction = pgTable(
   "credit_transaction",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: uuid("organization_id")
+    organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, {
         onDelete: "cascade",

@@ -4,11 +4,13 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { organization } from "./organization-schema";
 
 export const emailDomainStatus = pgEnum("email_domain_status", [
@@ -21,7 +23,23 @@ export const emailDomainStatus = pgEnum("email_domain_status", [
   "VERIFIED",
   "FAILED",
 ]);
-export type EmailDomainVerificationStatus = "pending" | "verified" | "failed";
+
+export const senderEmailStatus = pgEnum("sender_email_status", [
+  "active",
+  "disabled",
+]);
+export type EmailDomainVerificationStatus =
+  | "pending"
+  | "verified"
+  | "failed"
+  | "not_configured";
+export type EmailDomainReadinessStatus =
+  | "draft"
+  | "dns_pending"
+  | "partially_verified"
+  | "ready"
+  | "suspended"
+  | "failed";
 export type EmailDomainDnsRecord = {
   step: "DKIM" | "SPF" | "DMARC" | "MAIL_FROM_MX" | "MAIL_FROM_SPF";
   type: "CNAME" | "TXT" | "MX";
@@ -29,8 +47,23 @@ export type EmailDomainDnsRecord = {
   value: string;
   priority?: number;
   status?: EmailDomainVerificationStatus;
+  checkStatus?:
+    | "verified"
+    | "partial"
+    | "mismatch"
+    | "missing"
+    | "resolver_failed";
+  queriedHost?: string;
+  recordType?: "CNAME" | "TXT" | "MX";
+  matched?: boolean;
+  expectedRecords?: string[];
   reason?: string;
   actualRecords?: string[];
+  resolverServers?: string[];
+  resolverError?: {
+    code?: string;
+    message: string;
+  };
 };
 
 export type EmailDomainVerificationState = {
@@ -66,13 +99,26 @@ export type EmailDomainVerificationState = {
     status: EmailDomainVerificationStatus;
     records: EmailDomainDnsRecord[];
   };
+  summary?: {
+    sesIdentityStatus: EmailDomainVerificationStatus;
+    dkimStatus: EmailDomainVerificationStatus;
+    spfStatus: EmailDomainVerificationStatus;
+    dmarcStatus: EmailDomainVerificationStatus;
+    mailFromMxStatus: EmailDomainVerificationStatus;
+    mailFromSpfStatus: EmailDomainVerificationStatus;
+    domainStatus: EmailDomainReadinessStatus;
+    fullyVerified: boolean;
+    pending: string[];
+    failed: string[];
+    message: string;
+  };
 };
 
 export const emailDomain = pgTable(
   "email_domain",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: uuid("organization_id")
+    organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, {
         onDelete: "cascade",
@@ -151,6 +197,55 @@ export const emailDomain = pgTable(
   ],
 );
 
+export const senderEmailIdentity = pgTable(
+  "sender_email_identity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, {
+        onDelete: "cascade",
+      }),
+    domainId: uuid("domain_id")
+      .notNull()
+      .references(() => emailDomain.id, {
+        onDelete: "cascade",
+      }),
+    email: varchar("email", {
+      length: 320,
+    }).notNull(),
+    localPart: varchar("local_part", {
+      length: 64,
+    }).notNull(),
+    displayName: varchar("display_name", {
+      length: 120,
+    }),
+    isDefault: boolean("is_default").notNull().default(false),
+    status: senderEmailStatus("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("sender_email_identity_org_email_unique_idx").on(
+      table.organizationId,
+      table.email,
+    ),
+    uniqueIndex("sender_email_identity_domain_default_unique_idx")
+      .on(table.domainId)
+      .where(sql`${table.isDefault} = true`),
+    index("sender_email_identity_org_idx").on(table.organizationId),
+    index("sender_email_identity_domain_idx").on(table.domainId),
+    index("sender_email_identity_status_idx").on(table.status),
+  ],
+);
+
 export type EmailDomain = typeof emailDomain.$inferSelect;
 
 export type NewEmailDomain = typeof emailDomain.$inferInsert;
+
+export type SenderEmailIdentity = typeof senderEmailIdentity.$inferSelect;
+
+export type NewSenderEmailIdentity = typeof senderEmailIdentity.$inferInsert;

@@ -1,54 +1,50 @@
-import { and, apiKey, db, eq } from "@trynotifly/db";
 import { NextResponse } from "next/server";
+import { verifyApiKey } from "@/lib/api-keys";
+
+export const runtime = "nodejs";
 
 export async function PUT(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json().catch(() => null)) as { rawKey?: string } | null;
+    const rawKey = body?.rawKey;
 
-    const rawKey = body.rawKey as string;
+    if (!rawKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid API key.",
+        },
+        { status: 401 },
+      );
+    }
 
-    const prefix = rawKey.split("_").slice(0, 3).join("_");
+    const verified = await verifyApiKey(rawKey);
 
-    const encoder = new TextEncoder();
-
-    const data = encoder.encode(rawKey);
-
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-
-    const hashedIncomingKey = Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-
-    const foundKey = await db.query.apiKey.findFirst({
-      where: and(
-        eq(apiKey.prefix, prefix),
-        eq(apiKey.hashedKey, hashedIncomingKey),
-        eq(apiKey.status, "ACTIVE"),
-      ),
-    });
-
-    if (!foundKey) {
-      return NextResponse.json({
-        success: false,
-        message: "Invalid API Key",
-      });
+    if (!verified) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid API key.",
+        },
+        { status: 401 },
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: "API Key Verified",
+      message: "API key verified.",
+      organizationId: verified.organizationId,
+      type: verified.type,
     });
   } catch (error) {
-    console.error(error);
+    console.error("api_key.verify.failed", { error });
 
     return NextResponse.json(
       {
         success: false,
-        message: "Verification failed",
+        message: "Verification failed.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

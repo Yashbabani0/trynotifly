@@ -5,6 +5,7 @@ CREATE TYPE "public"."credit_type" AS ENUM('PURCHASE', 'USAGE', 'REFUND', 'BONUS
 CREATE TYPE "public"."email_domain_status" AS ENUM('PENDING', 'DKIM_PENDING', 'SPF_PENDING', 'DMARC_PENDING', 'MAIL_FROM_PENDING', 'SES_PENDING', 'VERIFIED', 'FAILED');--> statement-breakpoint
 CREATE TYPE "public"."company_tax_type" AS ENUM('GST', 'VAT', 'TIN', 'OTHER');--> statement-breakpoint
 CREATE TYPE "public"."company_type" AS ENUM('INDIVIDUAL', 'SOLE_PROPRIETORSHIP', 'PARTNERSHIP', 'LLP', 'PRIVATE_LIMITED', 'PUBLIC_LIMITED', 'OTHER');--> statement-breakpoint
+CREATE TYPE "public"."onboarding_step" AS ENUM('ORGANIZATION', 'PROFILE', 'COMPLETE');--> statement-breakpoint
 CREATE TYPE "public"."organization_plan" AS ENUM('FREE', 'PRO', 'BUSINESS', 'ENTERPRISE');--> statement-breakpoint
 CREATE TYPE "public"."organization_role" AS ENUM('OWNER', 'ADMIN', 'MEMBER');--> statement-breakpoint
 CREATE TYPE "public"."organization_status" AS ENUM('ACTIVE', 'SUSPENDED', 'DISABLED');--> statement-breakpoint
@@ -15,7 +16,7 @@ CREATE TABLE "api_key" (
 	"type" "api_key_type" DEFAULT 'TEST' NOT NULL,
 	"hashed_key" varchar(255) NOT NULL,
 	"prefix" varchar(32) NOT NULL,
-	"organization_id" uuid NOT NULL,
+	"organization_id" text NOT NULL,
 	"status" "api_key_status" DEFAULT 'ACTIVE' NOT NULL,
 	"last_used_at" timestamp,
 	"revoked_at" timestamp,
@@ -74,7 +75,7 @@ CREATE TABLE "verification" (
 --> statement-breakpoint
 CREATE TABLE "credit_transaction" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"organization_id" uuid NOT NULL,
+	"organization_id" text NOT NULL,
 	"amount" integer NOT NULL,
 	"type" "credit_type" NOT NULL,
 	"status" "credit_transaction_status" DEFAULT 'COMPLETED' NOT NULL,
@@ -88,7 +89,7 @@ CREATE TABLE "credit_transaction" (
 --> statement-breakpoint
 CREATE TABLE "email_domain" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"organization_id" uuid NOT NULL,
+	"organization_id" text NOT NULL,
 	"domain" varchar(255) NOT NULL,
 	"status" "email_domain_status" DEFAULT 'PENDING' NOT NULL,
 	"ses_verified" boolean DEFAULT false NOT NULL,
@@ -133,6 +134,14 @@ CREATE TABLE "organization" (
 	"name" text NOT NULL,
 	"slug" text NOT NULL,
 	"logo" text,
+	"industry" varchar(100),
+	"use_case" varchar(100),
+	"team_size" varchar(50),
+	"timezone" varchar(100),
+	"website" varchar(255),
+	"onboarding_step" "onboarding_step" DEFAULT 'ORGANIZATION' NOT NULL,
+	"onboarding_completed" boolean DEFAULT false NOT NULL,
+	"onboarding_completed_at" timestamp,
 	"estimated_monthly_notifications" integer DEFAULT 0 NOT NULL,
 	"balance" integer DEFAULT 0 NOT NULL,
 	"plan" "organization_plan" DEFAULT 'FREE' NOT NULL,
@@ -152,7 +161,7 @@ CREATE TABLE "organization" (
 --> statement-breakpoint
 CREATE TABLE "organization_legal" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"organization_id" uuid NOT NULL,
+	"organization_id" text NOT NULL,
 	"company_name" varchar(255) NOT NULL,
 	"company_address_line1" varchar(255) NOT NULL,
 	"company_address_line2" varchar(255),
@@ -167,6 +176,15 @@ CREATE TABLE "organization_legal" (
 	"company_tax_type" "company_tax_type" NOT NULL,
 	"company_tax_number" varchar(255),
 	"company_type" "company_type" NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "organization_onboarding_answer" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"organization_id" text NOT NULL,
+	"question_key" varchar(120) NOT NULL,
+	"answer" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -191,6 +209,7 @@ ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREI
 ALTER TABLE "organization_member" ADD CONSTRAINT "organization_member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_member" ADD CONSTRAINT "organization_member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization_legal" ADD CONSTRAINT "organization_legal_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_onboarding_answer" ADD CONSTRAINT "organization_onboarding_answer_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "organization_type_idx" ON "api_key" USING btree ("organization_id","type");--> statement-breakpoint
 CREATE UNIQUE INDEX "hashed_key_unique_idx" ON "api_key" USING btree ("hashed_key");--> statement-breakpoint
 CREATE UNIQUE INDEX "prefix_unique_idx" ON "api_key" USING btree ("prefix");--> statement-breakpoint
@@ -209,4 +228,6 @@ CREATE INDEX "invitation_email_idx" ON "invitation" USING btree ("email");--> st
 CREATE INDEX "member_organizationId_idx" ON "organization_member" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "member_userId_idx" ON "organization_member" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "organization_slug_uidx" ON "organization" USING btree ("slug");--> statement-breakpoint
-CREATE UNIQUE INDEX "organization_legal_organization_unique_idx" ON "organization_legal" USING btree ("organization_id");
+CREATE UNIQUE INDEX "organization_legal_organization_unique_idx" ON "organization_legal" USING btree ("organization_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "organization_onboarding_answer_unique_idx" ON "organization_onboarding_answer" USING btree ("organization_id","question_key");--> statement-breakpoint
+CREATE INDEX "organization_onboarding_answer_org_idx" ON "organization_onboarding_answer" USING btree ("organization_id");

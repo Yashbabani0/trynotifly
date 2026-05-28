@@ -4,6 +4,14 @@ import * as auth_schema from "@/auth-schema";
 import { dash, sentinel } from "@better-auth/infra";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
+import { getEmailEnv, getServerEnv } from "@/lib/env";
+import {
+  sendEmailVerificationEmail,
+  sendOrganizationInvitationEmail,
+  sendPasswordResetEmail,
+} from "@/lib/email";
+
+const env = getServerEnv();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -11,7 +19,7 @@ export const auth = betterAuth({
     schema: auth_schema,
     debugLogs: process.env.NODE_ENV === "development" ? true : false,
   }),
-  baseURL: process.env.BETTER_AUTH_URL!,
+  baseURL: env.BETTER_AUTH_URL,
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
@@ -24,6 +32,24 @@ export const auth = betterAuth({
     },
     resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
     revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail({
+        to: user.email,
+        userName: user.name,
+        resetUrl: url,
+      });
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: false,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendEmailVerificationEmail({
+        to: user.email,
+        userName: user.name,
+        verificationUrl: url,
+      });
+    },
   },
   account: {
     modelName: "account",
@@ -36,7 +62,7 @@ export const auth = betterAuth({
   },
   advanced: {
     cookiePrefix: "TryNotiflyDashboard",
-    useSecureCookies: true,
+    useSecureCookies: process.env.NODE_ENV === "production",
     ipAddress: {
       disableIpTracking: false,
       ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"],
@@ -56,7 +82,7 @@ export const auth = betterAuth({
     max: 100,
     storage: "memory", // For production, will add a robust storage like Redis
   },
-  secret: process.env.BETTER_AUTH_SECRET!,
+  secret: env.BETTER_AUTH_SECRET,
   session: {
     modelName: "session",
     expiresIn: 60 * 60 * 24 * 7, // 7 days
@@ -68,23 +94,23 @@ export const auth = betterAuth({
   socialProviders: {
     google: {
       enabled: true,
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
     github: {
       enabled: true,
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
     },
   },
   plugins: [
     dash({
-      apiKey: process.env.BETTER_AUTH_API_KEY!,
+      apiKey: env.BETTER_AUTH_API_KEY,
       activityTracking: { enabled: true, updateInterval: 300000 },
       apiTimeout: 5000,
     }),
     sentinel({
-      apiKey: process.env.BETTER_AUTH_API_KEY!,
+      apiKey: env.BETTER_AUTH_API_KEY,
       security: {
         botBlocking: { action: "challenge" },
         compromisedPassword: {
@@ -114,6 +140,17 @@ export const auth = betterAuth({
       membershipLimit: 100,
       organizationLimit: 1,
       cancelPendingInvitationsOnReInvite: true,
+      sendInvitationEmail: async (data) => {
+        const appUrl = getEmailEnv().APP_URL;
+
+        await sendOrganizationInvitationEmail({
+          to: data.email,
+          inviterName: data.inviter.user.name,
+          organizationName: data.organization.name,
+          role: data.role,
+          invitationUrl: `${appUrl}/accept-invitation?id=${data.id}`,
+        });
+      },
     }),
   ],
   experimental: {

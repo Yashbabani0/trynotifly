@@ -21,7 +21,8 @@ export const organizationRole = pgEnum("organization_role", [
 ]);
 export const organizationPlan = pgEnum("organization_plan", [
   "FREE",
-  "PRO",
+  "STARTER",
+  "PREMIUM",
   "BUSINESS",
   "ENTERPRISE",
 ]);
@@ -29,6 +30,11 @@ export const organizationStatus = pgEnum("organization_status", [
   "ACTIVE",
   "SUSPENDED",
   "DISABLED",
+]);
+export const onboardingStep = pgEnum("onboarding_step", [
+  "ORGANIZATION",
+  "PROFILE",
+  "COMPLETE",
 ]);
 export const companyTaxType = pgEnum("company_tax_type", [
   "GST",
@@ -53,6 +59,26 @@ export const organization = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     logo: text("logo"),
+    industry: varchar("industry", {
+      length: 100,
+    }),
+    useCase: varchar("use_case", {
+      length: 100,
+    }),
+    teamSize: varchar("team_size", {
+      length: 50,
+    }),
+    timezone: varchar("timezone", {
+      length: 100,
+    }),
+    website: varchar("website", {
+      length: 255,
+    }),
+    onboardingStep: onboardingStep("onboarding_step")
+      .notNull()
+      .default("ORGANIZATION"),
+    onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+    onboardingCompletedAt: timestamp("onboarding_completed_at"),
     estimatedMonthlyNotifications: integer("estimated_monthly_notifications")
       .notNull()
       .default(0),
@@ -80,6 +106,32 @@ export const organization = pgTable(
   (table) => [
     check("organization_balance_non_negative", sql`${table.balance} >= 0`),
     uniqueIndex("organization_slug_uidx").on(table.slug),
+  ],
+);
+
+export const organizationOnboardingAnswer = pgTable(
+  "organization_onboarding_answer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    questionKey: varchar("question_key", {
+      length: 120,
+    }).notNull(),
+    answer: text("answer").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("organization_onboarding_answer_unique_idx").on(
+      table.organizationId,
+      table.questionKey,
+    ),
+    index("organization_onboarding_answer_org_idx").on(table.organizationId),
   ],
 );
 
@@ -132,7 +184,7 @@ export const organizationLegal = pgTable(
   "organization_legal",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: uuid("organization_id")
+    organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, {
         onDelete: "cascade",
@@ -195,3 +247,5 @@ export type Organization = typeof organization.$inferSelect;
 export type NewOrganization = typeof organization.$inferInsert;
 export type OrganizationMember = typeof member.$inferSelect;
 export type OrganizationLegal = typeof organizationLegal.$inferSelect;
+export type OrganizationOnboardingAnswer =
+  typeof organizationOnboardingAnswer.$inferSelect;

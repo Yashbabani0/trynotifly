@@ -5,5 +5,4 @@ export const notificationChannel = pgEnum("notification_channel", [
   "EMAIL",
   "PUSH",
   "WHATSAPP",
-  "IN_APP",
 ]);
