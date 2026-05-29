@@ -3,6 +3,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { getOnboardingState } from "@/lib/onboarding/service";
 import { requireUser } from "@/lib/session";
 import { db, eq, member } from "@trynotifly/db";
+import Script from "next/script";
 
 export default async function DashboardLayout({
   children,
@@ -28,12 +29,18 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell
-      user={user}
-      organization={membership.organization}
-      role={membership.role}
-    >
-      {children}
-    </DashboardShell>
+    <>
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+      />
+      <DashboardShell
+        user={user}
+        organization={membership.organization}
+        role={membership.role}
+      >
+        {children}
+      </DashboardShell>
+    </>
   );
 }

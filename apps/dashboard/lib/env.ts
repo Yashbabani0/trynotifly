@@ -16,6 +16,12 @@ const emailEnvSchema = z.object({
   APP_URL: z.string().url().default(process.env.BETTER_AUTH_URL ?? "http://localhost:3000"),
 });
 
+const razorpayEnvSchema = z.object({
+  RAZORPAY_KEY_ID: z.string().min(1),
+  RAZORPAY_KEY_SECRET: z.string().min(1),
+  RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
+});
+
 export function getServerEnv() {
   const parsed = serverEnvSchema.safeParse(process.env);
 
@@ -33,6 +39,17 @@ export function getEmailEnv() {
   if (!parsed.success) {
     console.error("Invalid email environment", parsed.error.flatten().fieldErrors);
     throw new Error("Invalid email environment configuration.");
+  }
+
+  return parsed.data;
+}
+
+export function getRazorpayEnv() {
+  const parsed = razorpayEnvSchema.safeParse(process.env);
+
+  if (!parsed.success) {
+    console.error("Invalid Razorpay environment", parsed.error.flatten().fieldErrors);
+    throw new Error("Invalid Razorpay environment configuration.");
   }
 
   return parsed.data;

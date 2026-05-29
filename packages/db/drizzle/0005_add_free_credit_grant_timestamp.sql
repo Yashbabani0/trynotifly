@@ -1,0 +1,1 @@
+ALTER TABLE "organization" ADD COLUMN "last_free_credits_granted_at" timestamp;

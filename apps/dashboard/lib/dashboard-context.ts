@@ -9,6 +9,7 @@ import {
   organizationBilling,
 } from "@trynotifly/db";
 import { getSession } from "@/lib/session";
+import { processBillingMaintenanceForOrganization } from "@/lib/billing";
 
 export type DashboardRole = "owner" | "admin" | "member";
 
@@ -71,14 +72,27 @@ export async function getDashboardContext() {
   const billing =
     membership.organization.billing ??
     (await ensureOrganizationBilling(membership.organization.id, membership.organization.plan));
-  const plan = getPlanDefinition(billing.planSlug);
+  await processBillingMaintenanceForOrganization(membership.organization.id);
+  const refreshedOrganization = await db.query.organization.findFirst({
+    where: eq(organization.id, membership.organization.id),
+    with: {
+      billing: {
+        with: {
+          plan: true,
+        },
+      },
+    },
+  });
+  const organizationWithBilling = refreshedOrganization ?? membership.organization;
+  const refreshedBilling = organizationWithBilling.billing ?? billing;
+  const plan = getPlanDefinition(refreshedBilling.planSlug);
 
   return {
     user: session.user,
-    organization: membership.organization,
+    organization: organizationWithBilling,
     membership,
     role: normalizeRole(membership.role),
-    billing,
+    billing: refreshedBilling,
     plan,
   };
 }
@@ -98,17 +112,21 @@ export async function ensureOrganizationBilling(
       organizationId,
       planId: plan?.id,
       planSlug: normalizedPlan.slug,
-      billingProvider: "manual",
+      billingProvider: normalizedPlan.slug === "free" ? "free" : "manual",
       billingInterval: "monthly",
+      subscriptionStatus: "active",
       status: normalizedPlan.isContactSales ? "contact_sales" : "active",
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      creditsLastResetAt: null,
+      nextCreditResetAt: new Date(),
     })
     .onConflictDoUpdate({
       target: organizationBilling.organizationId,
       set: {
         planId: plan?.id,
         planSlug: normalizedPlan.slug,
+        billingProvider: normalizedPlan.slug === "free" ? "free" : "manual",
         updatedAt: new Date(),
       },
     })

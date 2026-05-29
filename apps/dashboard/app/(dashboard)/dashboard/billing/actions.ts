@@ -20,7 +20,7 @@ type State = {
 };
 
 const planSchema = z.object({
-  plan: z.enum(["FREE", "STARTER", "PREMIUM", "BUSINESS", "ENTERPRISE"]),
+  plan: z.enum(["free", "starter", "premium", "business", "enterprise"]),
 });
 
 export async function changePlanAction(

@@ -23,9 +23,11 @@ export const billingInterval = pgEnum("billing_interval", [
 ]);
 
 export const billingProvider = pgEnum("billing_provider", [
+  "free",
   "manual",
   "stripe",
   "razorpay",
+  "paddle",
 ]);
 
 export const billingStatus = pgEnum("billing_status", [
@@ -34,6 +36,32 @@ export const billingStatus = pgEnum("billing_status", [
   "past_due",
   "canceled",
   "contact_sales",
+]);
+
+export const billingTransactionStatus = pgEnum("billing_transaction_status", [
+  "created",
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+]);
+
+export const billingTransactionProvider = pgEnum(
+  "billing_transaction_provider",
+  ["razorpay", "paddle", "manual"],
+);
+
+export const subscriptionStatus = pgEnum("subscription_status", [
+  "created",
+  "authenticated",
+  "active",
+  "pending",
+  "halted",
+  "authentication_failed",
+  "cancelled",
+  "completed",
+  "expired",
+  "cancel_scheduled",
 ]);
 
 export type PlanFeatureFlags = {
@@ -62,11 +90,14 @@ export const plans = pgTable(
       length: 120,
     }).notNull(),
     description: text("description").notNull(),
-    monthlyPrice: integer("monthly_price"),
-    yearlyPrice: integer("yearly_price"),
+    monthlyPriceInr: integer("monthly_price_inr"),
+    yearlyPriceInr: integer("yearly_price_inr"),
     currency: varchar("currency", {
       length: 10,
     }).notNull().default("INR"),
+    razorpayPlanId: varchar("razorpay_plan_id", {
+      length: 255,
+    }),
     includedCredits: integer("included_credits"),
     monthlyNotificationLimit: integer("monthly_notification_limit"),
     emailLimit: integer("email_limit"),
@@ -77,6 +108,9 @@ export const plans = pgTable(
     apiKeyLimit: integer("api_key_limit"),
     domainLimit: integer("domain_limit"),
     senderEmailLimit: integer("sender_email_limit"),
+    support: varchar("support", {
+      length: 120,
+    }).notNull(),
     features: jsonb("features").$type<PlanFeatureFlags>().notNull(),
     isActive: boolean("is_active").notNull().default(true),
     isContactSales: boolean("is_contact_sales").notNull().default(false),
@@ -106,17 +140,37 @@ export const organizationBilling = pgTable(
     planId: uuid("plan_id").references(() => plans.id, {
       onDelete: "set null",
     }),
-    planSlug: organizationPlan("plan_slug").notNull().default("FREE"),
+    planSlug: organizationPlan("plan_slug").notNull().default("free"),
     billingInterval: billingInterval("billing_interval").notNull().default("monthly"),
-    billingProvider: billingProvider("billing_provider").notNull().default("manual"),
+    billingProvider: billingProvider("billing_provider").notNull().default("free"),
     status: billingStatus("status").notNull().default("active"),
+    subscriptionStatus: subscriptionStatus("subscription_status")
+      .notNull()
+      .default("active"),
     currentPeriodStart: timestamp("current_period_start"),
     currentPeriodEnd: timestamp("current_period_end"),
+    lastChargedAt: timestamp("last_charged_at"),
+    creditsLastResetAt: timestamp("credits_last_reset_at"),
+    nextCreditResetAt: timestamp("next_credit_reset_at"),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    cancelledAt: timestamp("cancelled_at"),
+    pendingPlanSlug: organizationPlan("pending_plan_slug"),
+    pendingRazorpaySubscriptionId: varchar("pending_razorpay_subscription_id", {
+      length: 255,
+    }),
+    pendingSubscriptionStatus: subscriptionStatus("pending_subscription_status"),
+    pendingCurrentPeriodStart: timestamp("pending_current_period_start"),
+    pendingCurrentPeriodEnd: timestamp("pending_current_period_end"),
     providerCustomerId: varchar("provider_customer_id", {
       length: 255,
     }),
     providerSubscriptionId: varchar("provider_subscription_id", {
+      length: 255,
+    }),
+    razorpaySubscriptionId: varchar("razorpay_subscription_id", {
+      length: 255,
+    }),
+    razorpayPlanId: varchar("razorpay_plan_id", {
       length: 255,
     }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -129,6 +183,91 @@ export const organizationBilling = pgTable(
     uniqueIndex("organization_billing_org_uidx").on(table.organizationId),
     index("organization_billing_plan_idx").on(table.planSlug),
     index("organization_billing_status_idx").on(table.status),
+    index("organization_billing_subscription_status_idx").on(
+      table.subscriptionStatus,
+    ),
+    uniqueIndex("organization_billing_razorpay_subscription_uidx").on(
+      table.razorpaySubscriptionId,
+    ),
+    uniqueIndex("organization_billing_pending_razorpay_subscription_uidx").on(
+      table.pendingRazorpaySubscriptionId,
+    ),
+  ],
+);
+
+export const billingTransactions = pgTable(
+  "billing_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, {
+        onDelete: "cascade",
+      }),
+    provider: billingTransactionProvider("provider").notNull(),
+    providerOrderId: varchar("provider_order_id", {
+      length: 255,
+    }),
+    providerEventId: varchar("provider_event_id", {
+      length: 255,
+    }),
+    providerSubscriptionId: varchar("provider_subscription_id", {
+      length: 255,
+    }),
+    providerPaymentId: varchar("provider_payment_id", {
+      length: 255,
+    }),
+    razorpaySubscriptionId: varchar("razorpay_subscription_id", {
+      length: 255,
+    }),
+    razorpayPaymentId: varchar("razorpay_payment_id", {
+      length: 255,
+    }),
+    razorpayInvoiceId: varchar("razorpay_invoice_id", {
+      length: 255,
+    }),
+    providerSignature: text("provider_signature"),
+    eventType: varchar("event_type", {
+      length: 120,
+    }),
+    planId: uuid("plan_id").references(() => plans.id, {
+      onDelete: "set null",
+    }),
+    planSlug: organizationPlan("plan_slug").notNull(),
+    amount: integer("amount").notNull(),
+    currency: varchar("currency", {
+      length: 10,
+    }).notNull().default("INR"),
+    status: billingTransactionStatus("status").notNull().default("created"),
+    rawPayload: jsonb("raw_payload"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("billing_transactions_provider_order_uidx").on(
+      table.providerOrderId,
+    ),
+    uniqueIndex("billing_transactions_provider_payment_uidx").on(
+      table.providerPaymentId,
+    ),
+    uniqueIndex("billing_transactions_provider_event_uidx").on(
+      table.providerEventId,
+    ),
+    uniqueIndex("billing_transactions_razorpay_payment_uidx").on(
+      table.razorpayPaymentId,
+    ),
+    uniqueIndex("billing_transactions_razorpay_invoice_uidx").on(
+      table.razorpayInvoiceId,
+    ),
+    index("billing_transactions_organization_idx").on(table.organizationId),
+    index("billing_transactions_provider_idx").on(table.provider),
+    index("billing_transactions_status_idx").on(table.status),
+    index("billing_transactions_subscription_idx").on(
+      table.razorpaySubscriptionId,
+    ),
   ],
 );
 
@@ -159,3 +298,5 @@ export type Plan = typeof plans.$inferSelect;
 export type NewPlan = typeof plans.$inferInsert;
 export type OrganizationBilling = typeof organizationBilling.$inferSelect;
 export type NewOrganizationBilling = typeof organizationBilling.$inferInsert;
+export type BillingTransaction = typeof billingTransactions.$inferSelect;
+export type NewBillingTransaction = typeof billingTransactions.$inferInsert;

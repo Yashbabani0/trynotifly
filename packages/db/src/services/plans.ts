@@ -1,4 +1,4 @@
-export type PlanSlug = "FREE" | "STARTER" | "PREMIUM" | "BUSINESS" | "ENTERPRISE";
+export type PlanSlug = "free" | "starter" | "premium" | "business" | "enterprise";
 export type BillingInterval = "monthly" | "yearly" | "manual";
 export type BillingStatus =
   | "active"
@@ -32,9 +32,10 @@ export type PlanDefinition = PlanLimits & {
   slug: PlanSlug;
   name: string;
   description: string;
-  monthlyPrice: number | null;
-  yearlyPrice: number | null;
+  monthlyPriceInr: number | null;
+  yearlyPriceInr: number | null;
   currency: "INR";
+  razorpayPlanId: string | null;
   support: string;
   analytics: "basic" | "advanced" | "custom";
   isContactSales: boolean;
@@ -52,13 +53,14 @@ export type LimitCheckResult =
     };
 
 export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
-  FREE: {
-    slug: "FREE",
+  free: {
+    slug: "free",
     name: "Free",
     description: "Start sending email and app push notifications with basic limits.",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    monthlyPriceInr: 0,
+    yearlyPriceInr: 0,
     currency: "INR",
+    razorpayPlanId: null,
     includedCredits: 500,
     monthlyNotificationLimit: 500,
     emailLimit: 500,
@@ -80,13 +82,14 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     isContactSales: false,
     sortOrder: 0,
   },
-  STARTER: {
-    slug: "STARTER",
+  starter: {
+    slug: "starter",
     name: "Starter",
     description: "All channels for small production teams.",
-    monthlyPrice: 999,
-    yearlyPrice: 9990,
+    monthlyPriceInr: 999,
+    yearlyPriceInr: 9990,
     currency: "INR",
+    razorpayPlanId: "plan_SvE9RNOovvEIJR",
     includedCredits: 25_000,
     monthlyNotificationLimit: 25_000,
     emailLimit: 25_000,
@@ -108,13 +111,14 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     isContactSales: false,
     sortOrder: 1,
   },
-  PREMIUM: {
-    slug: "PREMIUM",
+  premium: {
+    slug: "premium",
     name: "Premium",
     description: "Higher limits, advanced analytics, and priority queues.",
-    monthlyPrice: 4_999,
-    yearlyPrice: 49_990,
+    monthlyPriceInr: 4_999,
+    yearlyPriceInr: 49_990,
     currency: "INR",
+    razorpayPlanId: "plan_SvE7RpQzXDtM4o",
     includedCredits: 150_000,
     monthlyNotificationLimit: 150_000,
     emailLimit: 150_000,
@@ -136,13 +140,14 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     isContactSales: false,
     sortOrder: 2,
   },
-  BUSINESS: {
-    slug: "BUSINESS",
+  business: {
+    slug: "business",
     name: "Business",
     description: "Large-scale messaging with advanced organization controls.",
-    monthlyPrice: 14_999,
-    yearlyPrice: 149_990,
+    monthlyPriceInr: 14_999,
+    yearlyPriceInr: 149_990,
     currency: "INR",
+    razorpayPlanId: "plan_SvEA3cH9ooqp4P",
     includedCredits: 1_000_000,
     monthlyNotificationLimit: 1_000_000,
     emailLimit: 1_000_000,
@@ -164,13 +169,14 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     isContactSales: false,
     sortOrder: 3,
   },
-  ENTERPRISE: {
-    slug: "ENTERPRISE",
+  enterprise: {
+    slug: "enterprise",
     name: "Enterprise",
     description: "Custom scale, SLA, onboarding assistance, and dedicated support.",
-    monthlyPrice: null,
-    yearlyPrice: null,
+    monthlyPriceInr: null,
+    yearlyPriceInr: null,
     currency: "INR",
+    razorpayPlanId: null,
     includedCredits: null,
     monthlyNotificationLimit: null,
     emailLimit: null,
@@ -196,18 +202,57 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
 
 export function normalizePlanSlug(plan?: string | null): PlanSlug {
   if (plan === "PRO") {
-    return "STARTER";
+    return "starter";
   }
 
-  if (plan && plan in PLAN_DEFINITIONS) {
-    return plan as PlanSlug;
+  const normalized = plan?.toLowerCase();
+
+  if (normalized && normalized in PLAN_DEFINITIONS) {
+    return normalized as PlanSlug;
   }
 
-  return "FREE";
+  return "free";
+}
+
+export function isKnownPlanSlug(plan?: string | null): plan is PlanSlug {
+  const normalized = plan?.toLowerCase();
+
+  return Boolean(normalized && normalized in PLAN_DEFINITIONS);
 }
 
 export function getPlanDefinition(plan?: string | null) {
   return PLAN_DEFINITIONS[normalizePlanSlug(plan)];
+}
+
+export function getDefaultPlanSeeds() {
+  return Object.values(PLAN_DEFINITIONS).map((plan) => ({
+    slug: plan.slug,
+    name: plan.name,
+    description: plan.description,
+    monthlyPriceInr: plan.monthlyPriceInr,
+    yearlyPriceInr: plan.yearlyPriceInr,
+    currency: plan.currency,
+    razorpayPlanId: plan.razorpayPlanId,
+    includedCredits: plan.includedCredits,
+    monthlyNotificationLimit: plan.monthlyNotificationLimit,
+    emailLimit: plan.emailLimit,
+    smsLimit: plan.smsLimit,
+    whatsappLimit: plan.whatsappLimit,
+    appPushLimit: plan.appPushLimit,
+    memberLimit: plan.memberLimit,
+    apiKeyLimit: plan.apiKeyLimit,
+    domainLimit: plan.domainLimit,
+    senderEmailLimit: plan.senderEmailLimit,
+    support: plan.support,
+    features: {
+      channels: plan.channels,
+      support: plan.support,
+      analytics: plan.analytics,
+    },
+    isActive: true,
+    isContactSales: plan.isContactSales,
+    sortOrder: plan.sortOrder,
+  }));
 }
 
 export function isChannelAvailable(plan: string | null | undefined, channel: ChannelKey) {

@@ -10,7 +10,11 @@ import {
 import { creditTransaction } from "./credit-schema";
 import { account, session, user } from "./auth-schema";
 import { emailDomain, senderEmailIdentity } from "./domain-schema";
-import { organizationBilling, plans } from "./pricing-schema";
+import {
+  billingTransactions,
+  organizationBilling,
+  plans,
+} from "./pricing-schema";
 
 export const organizationRelations = relations(
   organization,
@@ -21,6 +25,7 @@ export const organizationRelations = relations(
     emailDomains: many(emailDomain),
     senderEmailIdentities: many(senderEmailIdentity),
     creditTransactions: many(creditTransaction),
+    billingTransactions: many(billingTransactions),
     onboardingAnswers: many(organizationOnboardingAnswer),
     legal: one(organizationLegal),
     billing: one(organizationBilling),
@@ -29,6 +34,7 @@ export const organizationRelations = relations(
 
 export const plansRelations = relations(plans, ({ many }) => ({
   organizationBillings: many(organizationBilling),
+  billingTransactions: many(billingTransactions),
 }));
 
 export const organizationBillingRelations = relations(
@@ -40,6 +46,20 @@ export const organizationBillingRelations = relations(
     }),
     plan: one(plans, {
       fields: [organizationBilling.planId],
+      references: [plans.id],
+    }),
+  }),
+);
+
+export const billingTransactionsRelations = relations(
+  billingTransactions,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [billingTransactions.organizationId],
+      references: [organization.id],
+    }),
+    plan: one(plans, {
+      fields: [billingTransactions.planId],
       references: [plans.id],
     }),
   }),

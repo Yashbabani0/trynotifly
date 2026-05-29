@@ -20,11 +20,11 @@ export const organizationRole = pgEnum("organization_role", [
   "MEMBER",
 ]);
 export const organizationPlan = pgEnum("organization_plan", [
-  "FREE",
-  "STARTER",
-  "PREMIUM",
-  "BUSINESS",
-  "ENTERPRISE",
+  "free",
+  "starter",
+  "premium",
+  "business",
+  "enterprise",
 ]);
 export const organizationStatus = pgEnum("organization_status", [
   "ACTIVE",
@@ -83,7 +83,8 @@ export const organization = pgTable(
       .notNull()
       .default(0),
     balance: integer("balance").notNull().default(0),
-    plan: organizationPlan("plan").notNull().default("FREE"),
+    lastFreeCreditsGrantedAt: timestamp("last_free_credits_granted_at"),
+    plan: organizationPlan("plan").notNull().default("free"),
     status: organizationStatus("status").notNull().default("ACTIVE"),
     emailEnabled: boolean("email_enabled").notNull().default(false),
     smsEnabled: boolean("sms_enabled").notNull().default(false),

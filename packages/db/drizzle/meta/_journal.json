@@ -29,6 +29,41 @@
       "when": 1779965362453,
       "tag": "0003_massive_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780056091604,
+      "tag": "0004_lowercase_billing_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780065706799,
+      "tag": "0005_add_free_credit_grant_timestamp",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780072629879,
+      "tag": "0006_razorpay_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780090800000,
+      "tag": "0007_authentication_failed_subscription_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780094400000,
+      "tag": "0008_billing_period_repair",
+      "breakpoints": true
     }
   ]
 }
