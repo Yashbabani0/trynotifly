@@ -1,14 +1,25 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Geist, Geist_Mono, Oxanium, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
+const playfairDisplayHeading = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-heading",
 });
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
+
+const oxanium = Oxanium({ subsets: ["latin"], variable: "--font-sans" });
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -22,9 +33,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={cn(
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        "font-sans",
+        oxanium.variable,
+        playfairDisplayHeading.variable,
+      )}
+    >
+      <body className="min-h-full flex flex-col">
+        <Navbar />
         {children}
+        <Footer />
       </body>
     </html>
   );
