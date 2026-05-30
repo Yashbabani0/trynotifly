@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 
 type RazorpaySubscriptionCheckoutResponse = {
   razorpay_payment_id: string;
-  razorpay_subscription_id: string;
+  razorpay_subscription_id?: string;
+  razorpay_order_id?: string;
   razorpay_signature: string;
 };
 
@@ -22,7 +23,10 @@ type RazorpayFailedResponse = {
 
 type RazorpayOptions = {
   key: string;
-  subscription_id: string;
+  subscription_id?: string;
+  order_id?: string;
+  amount?: number;
+  currency?: string;
   name: string;
   description: string;
   prefill?: {
@@ -88,6 +92,25 @@ type SubscriptionResponse =
           currentPeriodEnd?: string | null;
           cancelAtPeriodEnd?: boolean;
         };
+      };
+    };
+
+type AddonCheckoutResponse =
+  | {
+      success: true;
+      data: {
+        orderId: string;
+        razorpayKeyId: string;
+        amount: number;
+        currency: string;
+        name: string;
+        description: string;
+      };
+    }
+  | {
+      success: false;
+      error?: {
+        message?: string;
       };
     };
 
@@ -311,9 +334,16 @@ export function RazorpayCheckoutButton({
 
 export function CancelSubscriptionButton({
   organizationId,
+  label = "Cancel at period end",
+  pendingLabel = "Scheduling cancellation...",
+  successMessage,
 }: {
   organizationId: string;
+  label?: string;
+  pendingLabel?: string;
+  successMessage?: (until: string) => string;
 }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -347,7 +377,11 @@ export function CancelSubscriptionButton({
         ? new Date(payload.data.currentPeriodEnd).toLocaleDateString()
         : "the end of your current period";
 
-      setMessage(`Cancellation scheduled. Your current plan stays active until ${until}.`);
+      setMessage(
+        successMessage?.(until) ??
+          `Cancellation scheduled. Your current plan stays active until ${until}.`,
+      );
+      router.refresh();
     } catch (cause) {
       setMessage(
         cause instanceof Error
@@ -367,7 +401,7 @@ export function CancelSubscriptionButton({
         disabled={isLoading}
         variant="outline"
       >
-        {isLoading ? "Scheduling cancellation..." : "Cancel at period end"}
+        {isLoading ? pendingLabel : label}
       </Button>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>
@@ -433,6 +467,97 @@ export function ClearPendingSubscriptionButton({
         variant="outline"
       >
         {isLoading ? "Clearing..." : "Clear pending payment"}
+      </Button>
+      {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+    </div>
+  );
+}
+
+export function AddonCreditCheckoutButton({
+  organizationId,
+  addonPackSlug,
+}: {
+  organizationId: string;
+  addonPackSlug: string;
+}) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleBuyCredits() {
+    setIsLoading(true);
+    setMessage(null);
+
+    if (!window.Razorpay) {
+      setMessage("Razorpay checkout could not be loaded. Please try again.");
+      window.location.href = "/dashboard/billing/failed?type=addon";
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/billing/addons/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ organizationId, addonPackSlug }),
+      });
+      const payload = (await response.json()) as AddonCheckoutResponse;
+
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.success
+            ? "Could not start credit purchase."
+            : payload.error?.message ?? "Could not start credit purchase.",
+        );
+      }
+
+      const checkout = new window.Razorpay({
+        key: payload.data.razorpayKeyId,
+        order_id: payload.data.orderId,
+        amount: payload.data.amount,
+        currency: payload.data.currency,
+        name: "TryNotifly",
+        description: payload.data.description,
+        notes: {
+          organizationId,
+          addonPackSlug,
+        },
+        handler: () => {
+          window.location.href = "/dashboard/billing/success?type=addon";
+        },
+        modal: {
+          ondismiss: () => {
+            setMessage("Credit purchase was cancelled. You can retry anytime.");
+            setIsLoading(false);
+            router.refresh();
+          },
+        },
+        theme: {
+          color: "#000000",
+        },
+      });
+
+      checkout.on("payment.failed", () => {
+        window.location.href = "/dashboard/billing/failed?type=addon";
+      });
+
+      checkout.open();
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error
+          ? cause.message
+          : "Could not start credit purchase.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <Button className="w-full" onClick={handleBuyCredits} disabled={isLoading}>
+        {isLoading ? "Loading checkout..." : "Buy credits"}
       </Button>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>

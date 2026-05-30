@@ -19,6 +19,7 @@ import {
   getBillingAuthContext,
   isBlockingPaidSubscriptionStatus,
   isRetryableCheckoutStatus,
+  repairBillingPeriodForOrganization,
   shouldBlockNewSubscription,
 } from "@/lib/billing";
 
@@ -42,7 +43,12 @@ function jsonError(
 }
 
 function isPaidPlanSlug(planSlug: PlanSlug) {
-  return planSlug === "starter" || planSlug === "premium" || planSlug === "business";
+  return (
+    planSlug === "starter" ||
+    planSlug === "growth" ||
+    planSlug === "premium" ||
+    planSlug === "business"
+  );
 }
 
 export async function POST(request: Request) {
@@ -77,6 +83,7 @@ export async function POST(request: Request) {
     }
 
     await cleanupAbandonedCreatedSubscriptionForOrganization(organizationId);
+    await repairBillingPeriodForOrganization(organizationId);
 
     const [plan, billing] = await Promise.all([
       db.query.plans.findFirst({
@@ -87,7 +94,9 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    if (!plan || !plan.isActive || !plan.razorpayPlanId) {
+    const razorpayPlanId = plan?.razorpayMonthlyPlanId ?? plan?.razorpayPlanId;
+
+    if (!plan || !plan.isActive || !razorpayPlanId) {
       return jsonError(
         400,
         "PLAN_NOT_SUBSCRIBABLE",
@@ -96,7 +105,7 @@ export async function POST(request: Request) {
     }
 
     if (
-      billing?.subscriptionStatus === "created" &&
+      billing?.pendingSubscriptionStatus === "created" &&
       billing.pendingRazorpaySubscriptionId &&
       billing.pendingPlanSlug === planSlug
     ) {
@@ -116,10 +125,35 @@ export async function POST(request: Request) {
 
     if (
       billing &&
-      isRetryableCheckoutStatus(billing.subscriptionStatus) &&
+      isRetryableCheckoutStatus(billing.pendingSubscriptionStatus) &&
       billing.pendingPlanSlug
     ) {
       await clearPendingSubscriptionForOrganization(organizationId);
+    } else if (
+      billing?.pendingRazorpaySubscriptionId &&
+      isBlockingPaidSubscriptionStatus(billing.pendingSubscriptionStatus)
+    ) {
+      const samePlan = billing.pendingPlanSlug === planSlug;
+
+      return jsonError(
+        409,
+        samePlan
+          ? "SUBSCRIPTION_ALREADY_EXISTS"
+          : "PENDING_SUBSCRIPTION_AUTHENTICATION",
+        samePlan
+          ? "Payment authentication is already pending for this plan."
+          : "Wait for the pending payment authentication to finish before starting another plan.",
+        {
+          currentPlanSlug: billing.planSlug,
+          requestedPlanSlug: planSlug,
+          pendingPlanSlug: billing.pendingPlanSlug,
+          currentPeriodEnd:
+            billing.pendingCurrentPeriodEnd?.toISOString() ??
+            billing.currentPeriodEnd?.toISOString() ??
+            null,
+          cancelAtPeriodEnd: billing.cancelAtPeriodEnd,
+        },
+      );
     } else if (
       billing?.pendingRazorpaySubscriptionId &&
       isBlockingPaidSubscriptionStatus(billing.subscriptionStatus)
@@ -175,7 +209,7 @@ export async function POST(request: Request) {
     }
 
     const subscription = await createRazorpaySubscription({
-      planId: plan.razorpayPlanId,
+      planId: razorpayPlanId,
       totalCount: 120,
       customerNotify: true,
       notes: {
@@ -200,7 +234,7 @@ export async function POST(request: Request) {
         billingProvider: billing?.billingProvider ?? "free",
         billingInterval: "monthly",
         status: billing?.status ?? "active",
-        subscriptionStatus: "created",
+        subscriptionStatus: billing?.subscriptionStatus ?? "active",
         pendingRazorpaySubscriptionId: subscription.id,
         pendingSubscriptionStatus: "created",
         pendingCurrentPeriodStart: subscription.current_start
@@ -225,7 +259,7 @@ export async function POST(request: Request) {
           billingProvider: billing?.billingProvider ?? "free",
           billingInterval: "monthly",
           status: billing?.status ?? "active",
-          subscriptionStatus: "created",
+          subscriptionStatus: billing?.subscriptionStatus ?? "active",
           pendingRazorpaySubscriptionId: subscription.id,
           pendingSubscriptionStatus: "created",
           pendingCurrentPeriodStart: subscription.current_start

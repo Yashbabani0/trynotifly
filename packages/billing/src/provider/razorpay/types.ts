@@ -23,6 +23,26 @@ export type RazorpaySubscription = {
   created_at?: number;
 };
 
+export type CreateRazorpayOrderInput = {
+  amountInr: number;
+  currency?: "INR";
+  receipt: string;
+  notes?: Record<string, string>;
+};
+
+export type RazorpayOrder = {
+  id: string;
+  entity: "order";
+  amount: number;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  receipt?: string | null;
+  status: string;
+  notes?: Record<string, string>;
+  created_at?: number;
+};
+
 export type VerifyRazorpaySubscriptionCheckoutInput = {
   razorpayPaymentId: string;
   subscriptionId: string;

@@ -24,4 +24,5 @@ export const db = drizzle(client, {
 
 export * from "./db/schema";
 export * from "./services/plans";
+export * from "./services/credits";
 export * from "drizzle-orm";

@@ -12,6 +12,7 @@ import { account, session, user } from "./auth-schema";
 import { emailDomain, senderEmailIdentity } from "./domain-schema";
 import {
   billingTransactions,
+  creditAddonPacks,
   organizationBilling,
   plans,
 } from "./pricing-schema";
@@ -36,6 +37,8 @@ export const plansRelations = relations(plans, ({ many }) => ({
   organizationBillings: many(organizationBilling),
   billingTransactions: many(billingTransactions),
 }));
+
+export const creditAddonPacksRelations = relations(creditAddonPacks, () => ({}));
 
 export const organizationBillingRelations = relations(
   organizationBilling,

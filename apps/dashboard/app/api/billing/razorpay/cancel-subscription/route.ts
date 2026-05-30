@@ -5,6 +5,7 @@ import {
   addDays,
   canCancelSubscriptionStatus,
   getBillingAuthContext,
+  repairBillingPeriodForOrganization,
 } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -40,16 +41,19 @@ export async function POST(request: Request) {
       return jsonError(authContext.status, authContext.code, authContext.message);
     }
 
+    await repairBillingPeriodForOrganization(organizationId);
+
     const billing = await db.query.organizationBilling.findFirst({
       where: eq(organizationBilling.organizationId, organizationId),
     });
 
-    const subscriptionId =
-      billing?.razorpaySubscriptionId ?? billing?.pendingRazorpaySubscriptionId;
+    const subscriptionId = billing?.razorpaySubscriptionId;
 
     if (
       !billing ||
       !subscriptionId ||
+      billing.planSlug === "free" ||
+      billing.billingProvider !== "razorpay" ||
       !canCancelSubscriptionStatus(billing.subscriptionStatus)
     ) {
       return jsonError(
@@ -73,9 +77,6 @@ export async function POST(request: Request) {
         cancelAtPeriodEnd: true,
         cancelledAt: now,
         subscriptionStatus: "cancel_scheduled",
-        pendingSubscriptionStatus: billing.pendingRazorpaySubscriptionId
-          ? "cancel_scheduled"
-          : billing.pendingSubscriptionStatus,
         currentPeriodEnd,
         nextCreditResetAt: currentPeriodEnd,
         updatedAt: now,

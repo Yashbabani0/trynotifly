@@ -12,6 +12,7 @@ import {
   organization,
   organizationBilling,
   plans,
+  sql,
 } from "@trynotifly/db";
 import {
   addDays,
@@ -40,14 +41,13 @@ async function markSubscriptionAuthenticationFailed(organizationId: string) {
   await db
     .update(organizationBilling)
     .set({
-      subscriptionStatus: "authentication_failed",
       pendingSubscriptionStatus: "authentication_failed",
       updatedAt: new Date(),
     })
     .where(
       and(
         eq(organizationBilling.organizationId, organizationId),
-        eq(organizationBilling.subscriptionStatus, "created"),
+        eq(organizationBilling.pendingSubscriptionStatus, "created"),
       ),
     );
 }
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
           .update(organization)
           .set({
             plan: checkoutPlanSlug,
-            balance: plan?.includedCredits ?? 0,
+            balance: sql`${organization.balance} + ${plan?.includedCredits ?? 0}`,
             updatedAt: now,
           })
           .where(eq(organization.id, organizationId));
@@ -208,7 +208,6 @@ export async function POST(request: Request) {
         await tx
           .update(organizationBilling)
           .set({
-            subscriptionStatus: "authenticated",
             pendingSubscriptionStatus: "authenticated",
             pendingCurrentPeriodStart: periodStart,
             pendingCurrentPeriodEnd: periodEnd,

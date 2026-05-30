@@ -114,15 +114,12 @@ export async function repairBillingPeriodForOrganization(organizationId: string)
       sql`select id from "organization_billing" where organization_id = ${organizationId} for update`,
     );
 
-    const [org, billing, freePlan] = await Promise.all([
+    const [org, billing] = await Promise.all([
       tx.query.organization.findFirst({
         where: eq(organization.id, organizationId),
       }),
       tx.query.organizationBilling.findFirst({
         where: eq(organizationBilling.organizationId, organizationId),
-      }),
-      tx.query.plans.findFirst({
-        where: eq(plans.slug, "free"),
       }),
     ]);
 
@@ -143,22 +140,15 @@ export async function repairBillingPeriodForOrganization(organizationId: string)
       !billing.currentPeriodEnd ||
       !billing.creditsLastResetAt ||
       !billing.nextCreditResetAt;
-    const shouldCapFreeCredits =
-      isFreePlan(currentPlanSlug) && org.balance > (freePlan?.includedCredits ?? 500);
+    const invalidFreeCancellationState =
+      isFreePlan(currentPlanSlug) &&
+      (billing.subscriptionStatus === "cancel_scheduled" ||
+        billing.cancelAtPeriodEnd ||
+        billing.billingProvider !== "free" ||
+        billing.razorpaySubscriptionId);
 
-    if (!missingPeriod && !shouldCapFreeCredits) {
+    if (!missingPeriod && !invalidFreeCancellationState) {
       return null;
-    }
-
-    if (shouldCapFreeCredits) {
-      await tx
-        .update(organization)
-        .set({
-          balance: freePlan?.includedCredits ?? 500,
-          lastFreeCreditsGrantedAt: billing.creditsLastResetAt ?? periodStart,
-          updatedAt: now,
-        })
-        .where(eq(organization.id, organizationId));
     }
 
     const [updatedBilling] = await tx
@@ -168,6 +158,21 @@ export async function repairBillingPeriodForOrganization(organizationId: string)
         currentPeriodEnd: billing.currentPeriodEnd ?? periodEnd,
         creditsLastResetAt: billing.creditsLastResetAt ?? periodStart,
         nextCreditResetAt: billing.nextCreditResetAt ?? periodEnd,
+        billingProvider: isFreePlan(currentPlanSlug) ? "free" : billing.billingProvider,
+        subscriptionStatus: isFreePlan(currentPlanSlug)
+          ? "active"
+          : billing.subscriptionStatus,
+        cancelAtPeriodEnd: isFreePlan(currentPlanSlug)
+          ? false
+          : billing.cancelAtPeriodEnd,
+        cancelledAt: isFreePlan(currentPlanSlug) ? null : billing.cancelledAt,
+        providerSubscriptionId: isFreePlan(currentPlanSlug)
+          ? null
+          : billing.providerSubscriptionId,
+        razorpaySubscriptionId: isFreePlan(currentPlanSlug)
+          ? null
+          : billing.razorpaySubscriptionId,
+        razorpayPlanId: isFreePlan(currentPlanSlug) ? null : billing.razorpayPlanId,
         updatedAt: now,
       })
       .where(eq(organizationBilling.organizationId, organizationId))
@@ -213,11 +218,11 @@ export async function resetFreeCreditsForOrganization(organizationId: string) {
     const nextCreditResetAt = billing?.nextCreditResetAt ?? periodEnd;
     const hasRetryablePendingCheckout =
       billing?.pendingRazorpaySubscriptionId &&
-      (billing.subscriptionStatus === "created" ||
-        billing.subscriptionStatus === "authentication_failed");
+      (billing.pendingSubscriptionStatus === "created" ||
+        billing.pendingSubscriptionStatus === "authentication_failed");
 
     if (hasRetryablePendingCheckout) {
-      if (nextCreditResetAt > now && org.balance <= credits) {
+      if (nextCreditResetAt > now) {
         if (
           !billing.currentPeriodStart ||
           !billing.currentPeriodEnd ||
@@ -295,36 +300,6 @@ export async function resetFreeCreditsForOrganization(organizationId: string) {
     }
 
     if (nextCreditResetAt > now) {
-      if (org.balance > credits) {
-        const [cappedOrg] = await tx
-          .update(organization)
-          .set({
-            balance: credits,
-            lastFreeCreditsGrantedAt: billing?.creditsLastResetAt ?? now,
-            updatedAt: now,
-          })
-          .where(eq(organization.id, organizationId))
-          .returning();
-
-        await tx.insert(creditTransaction).values({
-          organizationId,
-          amount: credits,
-          type: "BONUS",
-          status: "COMPLETED",
-          description: "Free plan credits capped",
-          metadata: {
-            source: "free_plan_cap",
-            previousBalance: org.balance,
-            planSlug: "free",
-          },
-        });
-
-        return {
-          organization: cappedOrg ?? org,
-          billing,
-        };
-      }
-
       if (
         billing &&
         (!billing.currentPeriodStart ||
@@ -348,9 +323,9 @@ export async function resetFreeCreditsForOrganization(organizationId: string) {
     }
 
     const [updatedOrg] = await tx
-      .update(organization)
-      .set({
-        balance: credits,
+        .update(organization)
+        .set({
+        balance: sql`${organization.balance} + ${credits}`,
         lastFreeCreditsGrantedAt: now,
         updatedAt: now,
       })
@@ -428,7 +403,7 @@ export async function cleanupAbandonedCreatedSubscriptionForOrganization(
 
     if (
       !billing ||
-      billing.subscriptionStatus !== "created" ||
+      billing.pendingSubscriptionStatus !== "created" ||
       billing.updatedAt > cutoff
     ) {
       return null;
@@ -440,7 +415,7 @@ export async function cleanupAbandonedCreatedSubscriptionForOrganization(
       .update(organizationBilling)
       .set({
         billingProvider: currentPlanSlug === "free" ? "free" : billing.billingProvider,
-        subscriptionStatus: "expired",
+        subscriptionStatus: currentPlanSlug === "free" ? "active" : billing.subscriptionStatus,
         status: currentPlanSlug === "free" ? "active" : billing.status,
         providerSubscriptionId: billing.providerSubscriptionId,
         pendingRazorpaySubscriptionId: null,
@@ -473,8 +448,8 @@ export async function clearPendingSubscriptionForOrganization(
 
     if (
       !billing ||
-      (billing.subscriptionStatus !== "created" &&
-        billing.subscriptionStatus !== "authentication_failed")
+      (billing.pendingSubscriptionStatus !== "created" &&
+        billing.pendingSubscriptionStatus !== "authentication_failed")
     ) {
       return null;
     }
@@ -482,7 +457,6 @@ export async function clearPendingSubscriptionForOrganization(
     const [updatedBilling] = await tx
       .update(organizationBilling)
       .set({
-        subscriptionStatus: "expired",
         status: billing.status,
         pendingRazorpaySubscriptionId: null,
         pendingSubscriptionStatus: null,
@@ -538,7 +512,7 @@ export async function resetPaidCreditsForOrganizationIfDue(
     await tx
       .update(organization)
       .set({
-        balance: credits,
+        balance: sql`${organization.balance} + ${credits}`,
         updatedAt: now,
       })
       .where(eq(organization.id, organizationId));
@@ -605,7 +579,7 @@ export async function expireScheduledCancellationForOrganization(
       .update(organization)
       .set({
         plan: "free",
-        balance: credits,
+        balance: sql`${organization.balance} + ${credits}`,
         lastFreeCreditsGrantedAt: now,
         updatedAt: now,
       })

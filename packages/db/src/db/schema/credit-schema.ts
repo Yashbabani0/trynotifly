@@ -19,11 +19,21 @@ export const creditType = pgEnum("credit_type", [
   "REFUND",
   "BONUS",
   "ADJUSTMENT",
+  "SUBSCRIPTION_RENEWAL",
+  "ADDON_PURCHASE",
+  "USAGE_DEDUCTION",
+  "MANUAL_ADJUSTMENT",
 ]);
 export const creditTransactionStatus = pgEnum("credit_transaction_status", [
   "PENDING",
   "COMPLETED",
   "FAILED",
+]);
+export const creditTransactionProvider = pgEnum("credit_transaction_provider", [
+  "free",
+  "razorpay",
+  "manual",
+  "system",
 ]);
 
 export const creditTransaction = pgTable(
@@ -45,6 +55,16 @@ export const creditTransaction = pgTable(
     providerTransactionId: varchar("provider_transaction_id", {
       length: 255,
     }),
+    provider: creditTransactionProvider("provider"),
+    providerPaymentId: varchar("provider_payment_id", {
+      length: 255,
+    }),
+    providerOrderId: varchar("provider_order_id", {
+      length: 255,
+    }),
+    providerSubscriptionId: varchar("provider_subscription_id", {
+      length: 255,
+    }),
     currency: varchar("currency", {
       length: 10,
     }),
@@ -57,6 +77,8 @@ export const creditTransaction = pgTable(
     check("credit_transaction_amount_non_zero", sql`${table.amount} != 0`),
     index("credit_transaction_organization_id_idx").on(table.organizationId),
     index("credit_transaction_created_at_idx").on(table.createdAt),
+    index("credit_transaction_provider_order_idx").on(table.providerOrderId),
+    index("credit_transaction_provider_payment_idx").on(table.providerPaymentId),
   ],
 );
 

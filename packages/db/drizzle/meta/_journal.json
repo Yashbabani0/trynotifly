@@ -64,6 +64,20 @@
       "when": 1780094400000,
       "tag": "0008_billing_period_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780180800000,
+      "tag": "0009_repair_free_cancel_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780184400000,
+      "tag": "0010_growth_plans_addons",
+      "breakpoints": true
     }
   ]
 }

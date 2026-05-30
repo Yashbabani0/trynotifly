@@ -95,6 +95,12 @@ export const plans = pgTable(
     currency: varchar("currency", {
       length: 10,
     }).notNull().default("INR"),
+    razorpayMonthlyPlanId: varchar("razorpay_monthly_plan_id", {
+      length: 255,
+    }),
+    razorpayYearlyPlanId: varchar("razorpay_yearly_plan_id", {
+      length: 255,
+    }),
     razorpayPlanId: varchar("razorpay_plan_id", {
       length: 255,
     }),
@@ -111,6 +117,9 @@ export const plans = pgTable(
     support: varchar("support", {
       length: 120,
     }).notNull(),
+    analytics: varchar("analytics", {
+      length: 50,
+    }).notNull().default("basic"),
     features: jsonb("features").$type<PlanFeatureFlags>().notNull(),
     isActive: boolean("is_active").notNull().default(true),
     isContactSales: boolean("is_contact_sales").notNull().default(false),
@@ -125,6 +134,40 @@ export const plans = pgTable(
     uniqueIndex("plans_slug_uidx").on(table.slug),
     index("plans_active_idx").on(table.isActive),
     index("plans_sort_order_idx").on(table.sortOrder),
+  ],
+);
+
+export const creditAddonPacks = pgTable(
+  "credit_addon_packs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: varchar("slug", {
+      length: 120,
+    }).notNull(),
+    name: varchar("name", {
+      length: 160,
+    }).notNull(),
+    description: text("description").notNull(),
+    credits: integer("credits").notNull(),
+    priceInr: integer("price_inr").notNull(),
+    currency: varchar("currency", {
+      length: 10,
+    }).notNull().default("INR"),
+    razorpayItemName: varchar("razorpay_item_name", {
+      length: 255,
+    }),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("credit_addon_packs_slug_uidx").on(table.slug),
+    index("credit_addon_packs_active_idx").on(table.isActive),
+    index("credit_addon_packs_sort_order_idx").on(table.sortOrder),
   ],
 );
 
@@ -300,3 +343,5 @@ export type OrganizationBilling = typeof organizationBilling.$inferSelect;
 export type NewOrganizationBilling = typeof organizationBilling.$inferInsert;
 export type BillingTransaction = typeof billingTransactions.$inferSelect;
 export type NewBillingTransaction = typeof billingTransactions.$inferInsert;
+export type CreditAddonPack = typeof creditAddonPacks.$inferSelect;
+export type NewCreditAddonPack = typeof creditAddonPacks.$inferInsert;

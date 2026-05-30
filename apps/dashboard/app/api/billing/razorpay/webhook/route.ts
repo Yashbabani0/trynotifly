@@ -8,6 +8,7 @@ import {
   organization,
   organizationBilling,
   plans,
+  sql,
 } from "@trynotifly/db";
 import { addDays, resetFreeCreditsForOrganization } from "@/lib/billing";
 
@@ -25,6 +26,7 @@ type RazorpayEntity = {
   subscription_id?: string;
   payment_id?: string;
   invoice_id?: string;
+  order_id?: string;
 };
 
 type RazorpayWebhookPayload = {
@@ -94,7 +96,7 @@ async function findBilling(subscription: RazorpayEntity) {
 async function recordWebhookTransaction(input: {
   organizationId: string;
   planId?: string;
-  planSlug: "free" | "starter" | "premium" | "business" | "enterprise";
+  planSlug: "free" | "starter" | "growth" | "premium" | "business" | "enterprise";
   eventType: string;
   eventId: string;
   subscriptionId?: string;
@@ -174,6 +176,76 @@ export async function POST(request: Request) {
   const payment = payload.payload?.payment?.entity;
   const invoice = payload.payload?.invoice?.entity;
 
+  if (eventType === "payment.captured" && payment?.order_id) {
+    const webhookEventId = eventKey(payload, eventType);
+    const now = new Date();
+
+    await db.transaction(async (tx) => {
+      const existingEvent = await tx.query.billingTransactions.findFirst({
+        where: eq(billingTransactions.providerEventId, webhookEventId),
+      });
+
+      if (existingEvent) {
+        return;
+      }
+
+      const pendingCreditTransaction =
+        await tx.query.creditTransaction.findFirst({
+          where: eq(creditTransaction.providerOrderId, payment.order_id!),
+        });
+
+      if (
+        !pendingCreditTransaction ||
+        pendingCreditTransaction.status === "COMPLETED"
+      ) {
+        return;
+      }
+
+      await tx
+        .update(creditTransaction)
+        .set({
+          status: "COMPLETED",
+          providerPaymentId: payment.id,
+          providerTransactionId: payment.id,
+          metadata: {
+            ...(pendingCreditTransaction.metadata &&
+            typeof pendingCreditTransaction.metadata === "object"
+              ? pendingCreditTransaction.metadata
+              : {}),
+            paymentId: payment.id,
+            eventId: webhookEventId,
+            rawPayload: payload,
+          },
+        })
+        .where(eq(creditTransaction.id, pendingCreditTransaction.id));
+
+      await tx
+        .update(organization)
+        .set({
+          balance: sql`${organization.balance} + ${pendingCreditTransaction.amount}`,
+          updatedAt: now,
+        })
+        .where(eq(organization.id, pendingCreditTransaction.organizationId));
+
+      await tx.insert(billingTransactions).values({
+        organizationId: pendingCreditTransaction.organizationId,
+        provider: "razorpay",
+        providerEventId: webhookEventId,
+        providerOrderId: payment.order_id,
+        providerPaymentId: payment.id,
+        razorpayPaymentId: payment.id,
+        amount: payment.amount ?? 0,
+        currency: payment.currency ?? "INR",
+        planSlug: "free",
+        status: "paid",
+        eventType,
+        rawPayload: payload,
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  }
+
   if (!eventType || !subscription) {
     return NextResponse.json({ success: true, ignored: true });
   }
@@ -187,6 +259,7 @@ export async function POST(request: Request) {
   const planSlug = (subscription.notes?.planSlug ?? billing.planSlug) as
     | "free"
     | "starter"
+    | "growth"
     | "premium"
     | "business"
     | "enterprise";
@@ -230,7 +303,7 @@ export async function POST(request: Request) {
         .update(organization)
         .set({
           plan: planSlug,
-          balance: credits,
+          balance: sql`${organization.balance} + ${credits}`,
           updatedAt: now,
         })
         .where(eq(organization.id, billing.organizationId));
@@ -357,7 +430,7 @@ export async function POST(request: Request) {
         .update(organization)
         .set({
           plan: planSlug,
-          balance: credits,
+          balance: sql`${organization.balance} + ${credits}`,
           updatedAt: now,
         })
         .where(eq(organization.id, billing.organizationId));
@@ -412,11 +485,24 @@ export async function POST(request: Request) {
   }
 
   if (eventType === "subscription.pending" || eventType === "subscription.halted") {
+    const isPendingCheckoutSubscription =
+      billing.pendingRazorpaySubscriptionId === subscription.id &&
+      billing.razorpaySubscriptionId !== subscription.id;
+
     await db
       .update(organizationBilling)
       .set({
-        subscriptionStatus: eventType === "subscription.pending" ? "pending" : "halted",
-        status: "past_due",
+        subscriptionStatus: isPendingCheckoutSubscription
+          ? billing.subscriptionStatus
+          : eventType === "subscription.pending"
+            ? "pending"
+            : "halted",
+        pendingSubscriptionStatus: isPendingCheckoutSubscription
+          ? eventType === "subscription.pending"
+            ? "pending"
+            : "halted"
+          : billing.pendingSubscriptionStatus,
+        status: isPendingCheckoutSubscription ? billing.status : "past_due",
         updatedAt: now,
       })
       .where(eq(organizationBilling.organizationId, billing.organizationId));
@@ -440,6 +526,26 @@ export async function POST(request: Request) {
   }
 
   if (eventType === "subscription.cancelled" || eventType === "subscription.completed") {
+    const isPendingCheckoutSubscription =
+      billing.pendingRazorpaySubscriptionId === subscription.id &&
+      billing.razorpaySubscriptionId !== subscription.id;
+
+    if (isPendingCheckoutSubscription) {
+      await db
+        .update(organizationBilling)
+        .set({
+          pendingPlanSlug: null,
+          pendingRazorpaySubscriptionId: null,
+          pendingSubscriptionStatus: null,
+          pendingCurrentPeriodStart: null,
+          pendingCurrentPeriodEnd: null,
+          updatedAt: now,
+        })
+        .where(eq(organizationBilling.organizationId, billing.organizationId));
+
+      return NextResponse.json({ success: true });
+    }
+
     if (currentPeriodEnd > now) {
       await db
         .update(organizationBilling)
@@ -465,8 +571,7 @@ export async function POST(request: Request) {
         .set({
           planSlug: "free",
           billingProvider: "free",
-          subscriptionStatus:
-            eventType === "subscription.completed" ? "completed" : "cancelled",
+          subscriptionStatus: "active",
           status: "active",
           cancelAtPeriodEnd: false,
           providerSubscriptionId: null,

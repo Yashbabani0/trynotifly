@@ -2,13 +2,23 @@ import "dotenv/config";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import type {
+  CreateRazorpayOrderInput,
   CreateRazorpaySubscriptionInput,
+  RazorpayOrder,
   RazorpaySubscription,
   VerifyRazorpaySubscriptionCheckoutInput,
   VerifyRazorpayWebhookInput,
 } from "./types";
 
 type RazorpaySubscriptionsClient = {
+  orders: {
+    create: (input: {
+      amount: number;
+      currency: string;
+      receipt: string;
+      notes?: Record<string, string>;
+    }) => Promise<RazorpayOrder>;
+  };
   subscriptions: {
     create: (input: {
       plan_id: string;
@@ -68,6 +78,29 @@ export async function createRazorpaySubscription(
     customer_notify: input.customerNotify === false ? 0 : 1,
     notes: input.notes,
   });
+}
+
+export async function createRazorpayOrder(input: CreateRazorpayOrderInput) {
+  const razorpay = getRazorpayInstance();
+
+  return razorpay.orders.create({
+    amount: input.amountInr * 100,
+    currency: input.currency ?? "INR",
+    receipt: input.receipt.slice(0, 40),
+    notes: input.notes,
+  });
+}
+
+export function verifyRazorpayOrderPaymentSignature(input: {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}) {
+  const { keySecret } = getRazorpayCredentials();
+  const body = `${input.razorpayOrderId}|${input.razorpayPaymentId}`;
+  const expectedSignature = hmacSha256Hex(body, keySecret);
+
+  return timingSafeEqualHex(expectedSignature, input.razorpaySignature);
 }
 
 export async function fetchRazorpaySubscription(subscriptionId: string) {

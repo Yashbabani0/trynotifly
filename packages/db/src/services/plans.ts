@@ -1,4 +1,10 @@
-export type PlanSlug = "free" | "starter" | "premium" | "business" | "enterprise";
+export type PlanSlug =
+  | "free"
+  | "starter"
+  | "growth"
+  | "premium"
+  | "business"
+  | "enterprise";
 export type BillingInterval = "monthly" | "yearly" | "manual";
 export type BillingStatus =
   | "active"
@@ -13,6 +19,7 @@ export type LimitKey =
   | "domains"
   | "senderEmails"
   | "monthlyNotifications";
+export type AnalyticsTier = "basic" | "advanced" | "custom";
 
 export type PlanLimits = {
   includedCredits: number | null;
@@ -35,10 +42,24 @@ export type PlanDefinition = PlanLimits & {
   monthlyPriceInr: number | null;
   yearlyPriceInr: number | null;
   currency: "INR";
+  razorpayMonthlyPlanId: string | null;
+  razorpayYearlyPlanId: string | null;
   razorpayPlanId: string | null;
   support: string;
-  analytics: "basic" | "advanced" | "custom";
+  analytics: AnalyticsTier;
   isContactSales: boolean;
+  sortOrder: number;
+};
+
+export type CreditAddonPackDefinition = {
+  slug: "starter_pack" | "growth_pack" | "premium_pack" | "business_pack";
+  name: string;
+  description: string;
+  credits: number;
+  priceInr: number;
+  currency: "INR";
+  razorpayItemName: string | null;
+  isActive: boolean;
   sortOrder: number;
 };
 
@@ -52,21 +73,30 @@ export type LimitCheckResult =
       message: string;
     };
 
+const allChannels = {
+  email: true,
+  sms: true,
+  whatsapp: true,
+  appPush: true,
+} satisfies Record<ChannelKey, boolean>;
+
 export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
   free: {
     slug: "free",
     name: "Free",
-    description: "Start sending email and app push notifications with basic limits.",
+    description: "Email and app push for getting started with safe basic limits.",
     monthlyPriceInr: 0,
     yearlyPriceInr: 0,
     currency: "INR",
+    razorpayMonthlyPlanId: null,
+    razorpayYearlyPlanId: null,
     razorpayPlanId: null,
     includedCredits: 500,
     monthlyNotificationLimit: 500,
     emailLimit: 500,
     smsLimit: 0,
     whatsappLimit: 0,
-    appPushLimit: 500,
+    appPushLimit: 2000,
     memberLimit: 3,
     apiKeyLimit: 1,
     domainLimit: 1,
@@ -85,89 +115,106 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
   starter: {
     slug: "starter",
     name: "Starter",
-    description: "All channels for small production teams.",
-    monthlyPriceInr: 999,
-    yearlyPriceInr: 9990,
+    description: "Low-cost omnichannel sending with conservative SMS and WhatsApp limits.",
+    monthlyPriceInr: 299,
+    yearlyPriceInr: 2990,
     currency: "INR",
-    razorpayPlanId: "plan_SvE9RNOovvEIJR",
-    includedCredits: 25_000,
-    monthlyNotificationLimit: 25_000,
-    emailLimit: 25_000,
-    smsLimit: 25_000,
-    whatsappLimit: 25_000,
-    appPushLimit: 25_000,
-    memberLimit: 10,
-    apiKeyLimit: 10,
-    domainLimit: 5,
-    senderEmailLimit: 25,
-    channels: {
-      email: true,
-      sms: true,
-      whatsapp: true,
-      appPush: true,
-    },
+    razorpayMonthlyPlanId: null,
+    razorpayYearlyPlanId: null,
+    razorpayPlanId: null,
+    includedCredits: 5000,
+    monthlyNotificationLimit: 5000,
+    emailLimit: 5000,
+    smsLimit: 300,
+    whatsappLimit: 300,
+    appPushLimit: 20000,
+    memberLimit: 5,
+    apiKeyLimit: 5,
+    domainLimit: 3,
+    senderEmailLimit: 10,
+    channels: allChannels,
     support: "Standard support",
     analytics: "basic",
     isContactSales: false,
     sortOrder: 1,
   },
+  growth: {
+    slug: "growth",
+    name: "Growth",
+    description: "More credits and higher abuse-protection limits for growing teams.",
+    monthlyPriceInr: 999,
+    yearlyPriceInr: 9990,
+    currency: "INR",
+    razorpayMonthlyPlanId: "plan_SvE9RNOovvEIJR",
+    razorpayYearlyPlanId: null,
+    razorpayPlanId: "plan_SvE9RNOovvEIJR",
+    includedCredits: 25_000,
+    monthlyNotificationLimit: 25_000,
+    emailLimit: 25_000,
+    smsLimit: 2000,
+    whatsappLimit: 2000,
+    appPushLimit: 100_000,
+    memberLimit: 15,
+    apiKeyLimit: 15,
+    domainLimit: 10,
+    senderEmailLimit: 50,
+    channels: allChannels,
+    support: "Priority email support",
+    analytics: "basic",
+    isContactSales: false,
+    sortOrder: 2,
+  },
   premium: {
     slug: "premium",
     name: "Premium",
-    description: "Higher limits, advanced analytics, and priority queues.",
-    monthlyPriceInr: 4_999,
-    yearlyPriceInr: 49_990,
+    description: "Higher-volume messaging with advanced analytics and priority support.",
+    monthlyPriceInr: 2999,
+    yearlyPriceInr: 29_990,
     currency: "INR",
-    razorpayPlanId: "plan_SvE7RpQzXDtM4o",
-    includedCredits: 150_000,
-    monthlyNotificationLimit: 150_000,
-    emailLimit: 150_000,
-    smsLimit: 150_000,
-    whatsappLimit: 150_000,
-    appPushLimit: 150_000,
+    razorpayMonthlyPlanId: null,
+    razorpayYearlyPlanId: null,
+    razorpayPlanId: null,
+    includedCredits: 100_000,
+    monthlyNotificationLimit: 100_000,
+    emailLimit: 100_000,
+    smsLimit: 10_000,
+    whatsappLimit: 10_000,
+    appPushLimit: 500_000,
     memberLimit: 50,
     apiKeyLimit: 50,
-    domainLimit: 20,
-    senderEmailLimit: 100,
-    channels: {
-      email: true,
-      sms: true,
-      whatsapp: true,
-      appPush: true,
-    },
+    domainLimit: 25,
+    senderEmailLimit: 200,
+    channels: allChannels,
     support: "Priority support",
     analytics: "advanced",
     isContactSales: false,
-    sortOrder: 2,
+    sortOrder: 3,
   },
   business: {
     slug: "business",
     name: "Business",
     description: "Large-scale messaging with advanced organization controls.",
-    monthlyPriceInr: 14_999,
-    yearlyPriceInr: 149_990,
+    monthlyPriceInr: 7999,
+    yearlyPriceInr: 79_990,
     currency: "INR",
-    razorpayPlanId: "plan_SvEA3cH9ooqp4P",
-    includedCredits: 1_000_000,
-    monthlyNotificationLimit: 1_000_000,
-    emailLimit: 1_000_000,
-    smsLimit: 1_000_000,
-    whatsappLimit: 1_000_000,
-    appPushLimit: 1_000_000,
+    razorpayMonthlyPlanId: null,
+    razorpayYearlyPlanId: null,
+    razorpayPlanId: null,
+    includedCredits: 500_000,
+    monthlyNotificationLimit: 500_000,
+    emailLimit: 500_000,
+    smsLimit: 50_000,
+    whatsappLimit: 50_000,
+    appPushLimit: 2_000_000,
     memberLimit: 250,
     apiKeyLimit: null,
     domainLimit: 100,
-    senderEmailLimit: 500,
-    channels: {
-      email: true,
-      sms: true,
-      whatsapp: true,
-      appPush: true,
-    },
+    senderEmailLimit: 1000,
+    channels: allChannels,
     support: "Premium support",
     analytics: "advanced",
     isContactSales: false,
-    sortOrder: 3,
+    sortOrder: 4,
   },
   enterprise: {
     slug: "enterprise",
@@ -176,6 +223,8 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     monthlyPriceInr: null,
     yearlyPriceInr: null,
     currency: "INR",
+    razorpayMonthlyPlanId: null,
+    razorpayYearlyPlanId: null,
     razorpayPlanId: null,
     includedCredits: null,
     monthlyNotificationLimit: null,
@@ -187,22 +236,67 @@ export const PLAN_DEFINITIONS: Record<PlanSlug, PlanDefinition> = {
     apiKeyLimit: null,
     domainLimit: null,
     senderEmailLimit: null,
-    channels: {
-      email: true,
-      sms: true,
-      whatsapp: true,
-      appPush: true,
-    },
+    channels: allChannels,
     support: "Dedicated support",
     analytics: "custom",
     isContactSales: true,
-    sortOrder: 4,
+    sortOrder: 5,
+  },
+};
+
+export const CREDIT_ADDON_PACK_DEFINITIONS: Record<
+  CreditAddonPackDefinition["slug"],
+  CreditAddonPackDefinition
+> = {
+  starter_pack: {
+    slug: "starter_pack",
+    name: "5,000 Credits",
+    description: "One-time prepaid credits for extra email, SMS, WhatsApp, or push usage.",
+    credits: 5000,
+    priceInr: 99,
+    currency: "INR",
+    razorpayItemName: "TryNotifly 5,000 Credits",
+    isActive: true,
+    sortOrder: 0,
+  },
+  growth_pack: {
+    slug: "growth_pack",
+    name: "25,000 Credits",
+    description: "One-time prepaid credits for growing campaigns.",
+    credits: 25_000,
+    priceInr: 399,
+    currency: "INR",
+    razorpayItemName: "TryNotifly 25,000 Credits",
+    isActive: true,
+    sortOrder: 1,
+  },
+  premium_pack: {
+    slug: "premium_pack",
+    name: "100,000 Credits",
+    description: "One-time prepaid credits for larger sending spikes.",
+    credits: 100_000,
+    priceInr: 1299,
+    currency: "INR",
+    razorpayItemName: "TryNotifly 100,000 Credits",
+    isActive: true,
+    sortOrder: 2,
+  },
+  business_pack: {
+    slug: "business_pack",
+    name: "500,000 Credits",
+    description: "One-time prepaid credits for high-volume campaigns.",
+    credits: 500_000,
+    priceInr: 4999,
+    currency: "INR",
+    razorpayItemName: "TryNotifly 500,000 Credits",
+    isActive: true,
+    sortOrder: 3,
   },
 };
 
 export function normalizePlanSlug(plan?: string | null): PlanSlug {
   if (plan === "PRO") {
-    return "starter";
+    return "growth";
   }
 
   const normalized = plan?.toLowerCase();
@@ -232,6 +326,8 @@ export function getDefaultPlanSeeds() {
     monthlyPriceInr: plan.monthlyPriceInr,
     yearlyPriceInr: plan.yearlyPriceInr,
     currency: plan.currency,
+    razorpayMonthlyPlanId: plan.razorpayMonthlyPlanId,
+    razorpayYearlyPlanId: plan.razorpayYearlyPlanId,
     razorpayPlanId: plan.razorpayPlanId,
     includedCredits: plan.includedCredits,
     monthlyNotificationLimit: plan.monthlyNotificationLimit,
@@ -244,6 +340,7 @@ export function getDefaultPlanSeeds() {
     domainLimit: plan.domainLimit,
     senderEmailLimit: plan.senderEmailLimit,
     support: plan.support,
+    analytics: plan.analytics,
     features: {
       channels: plan.channels,
       support: plan.support,
@@ -253,6 +350,10 @@ export function getDefaultPlanSeeds() {
     isContactSales: plan.isContactSales,
     sortOrder: plan.sortOrder,
   }));
+}
+
+export function getDefaultCreditAddonPackSeeds() {
+  return Object.values(CREDIT_ADDON_PACK_DEFINITIONS);
 }
 
 export function isChannelAvailable(plan: string | null | undefined, channel: ChannelKey) {

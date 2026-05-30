@@ -1,4 +1,4 @@
-import { asc, db, eq, plans } from "@trynotifly/db";
+import { asc, creditAddonPacks, db, eq, plans } from "@trynotifly/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { getDashboardContext } from "@/lib/dashboard-context";
 import {
   CancelSubscriptionButton,
   ClearPendingSubscriptionButton,
+  AddonCreditCheckoutButton,
   RazorpayCheckoutButton,
 } from "@/components/dashboard/razorpay-button";
 import {
@@ -59,36 +60,50 @@ function getPeriodMetrics(start?: Date | null, end?: Date | null) {
 }
 
 function isPaidPlan(planSlug: string) {
-  return planSlug === "starter" || planSlug === "premium" || planSlug === "business";
+  return (
+    planSlug === "starter" ||
+    planSlug === "growth" ||
+    planSlug === "premium" ||
+    planSlug === "business"
+  );
 }
 
 export default async function PlansPage() {
   const { user, organization, billing } = await getDashboardContext();
-  const activePlans = (
-    await db.query.plans.findMany({
-      where: eq(plans.isActive, true),
-      orderBy: [asc(plans.sortOrder)],
-    })
-  ).filter((plan) => plan.slug !== "enterprise");
+  const activePlans = await db.query.plans.findMany({
+    where: eq(plans.isActive, true),
+    orderBy: [asc(plans.sortOrder)],
+  });
+  const activeAddonPacks = await db.query.creditAddonPacks.findMany({
+    where: eq(creditAddonPacks.isActive, true),
+    orderBy: [asc(creditAddonPacks.sortOrder)],
+  });
   const currentPlan = getActivePlanSlug({
     billingPlanSlug: billing.planSlug,
     organizationPlan: organization.plan,
   });
+  const currentPlanIsFree = currentPlan === "free";
   const hasNonTerminalRazorpaySubscription =
+    !currentPlanIsFree &&
     Boolean(
-      billing.razorpaySubscriptionId ?? billing.pendingRazorpaySubscriptionId,
+      billing.razorpaySubscriptionId,
     ) &&
     isBlockingPaidSubscriptionStatus(billing.subscriptionStatus);
   const hasRetryablePendingCheckout =
     Boolean(billing.pendingRazorpaySubscriptionId) &&
-    isRetryableCheckoutStatus(billing.subscriptionStatus);
+    isRetryableCheckoutStatus(billing.pendingSubscriptionStatus);
+  const hasAuthenticatedPendingCheckout =
+    Boolean(billing.pendingRazorpaySubscriptionId) &&
+    isBlockingPaidSubscriptionStatus(billing.pendingSubscriptionStatus);
   const canCancelCurrentSubscription =
+    !currentPlanIsFree &&
     Boolean(
-      billing.razorpaySubscriptionId ?? billing.pendingRazorpaySubscriptionId,
+      billing.razorpaySubscriptionId,
     ) &&
     canCancelStatus(billing.subscriptionStatus);
   const cancellationScheduled =
-    billing.cancelAtPeriodEnd || billing.subscriptionStatus === "cancel_scheduled";
+    !currentPlanIsFree &&
+    (billing.cancelAtPeriodEnd || billing.subscriptionStatus === "cancel_scheduled");
   const fallbackPeriodEnd =
     billing.currentPeriodEnd ??
     (billing.currentPeriodStart
@@ -199,7 +214,8 @@ export default async function PlansPage() {
             </div>
           </CardContent>
         </Card>
-      ) : billing.pendingPlanSlug && billing.subscriptionStatus === "authenticated" ? (
+      ) : billing.pendingPlanSlug &&
+        billing.pendingSubscriptionStatus === "authenticated" ? (
         <Card>
           <CardHeader>
             <CardTitle>Payment authentication pending</CardTitle>
@@ -223,13 +239,17 @@ export default async function PlansPage() {
         {activePlans.map((plan) => {
           const current = currentPlan === plan.slug;
           const paid = isPaidPlan(plan.slug);
+          const hasRazorpayPlanId = Boolean(
+            plan.razorpayMonthlyPlanId ?? plan.razorpayPlanId,
+          );
           const pendingForThisPlan =
             hasRetryablePendingCheckout && billing.pendingPlanSlug === plan.slug;
           const canStartSubscription =
             paid &&
             !current &&
             !hasNonTerminalRazorpaySubscription &&
-            Boolean(plan.razorpayPlanId);
+            !hasAuthenticatedPendingCheckout &&
+            hasRazorpayPlanId;
 
           return (
             <Card
@@ -287,10 +307,32 @@ export default async function PlansPage() {
                     />
                     <ClearPendingSubscriptionButton organizationId={organization.id} />
                   </div>
-                ) : plan.slug === "free" && hasNonTerminalRazorpaySubscription ? (
+                ) : plan.isContactSales ? (
                   <Button disabled variant="outline" className="w-full">
-                    Current plan remains active
+                    Contact sales
                   </Button>
+                ) : plan.slug === "free" && hasNonTerminalRazorpaySubscription ? (
+                  <div className="space-y-2">
+                    {cancellationScheduled ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Free starts after current period
+                      </Button>
+                    ) : (
+                      <CancelSubscriptionButton
+                        organizationId={organization.id}
+                        label="Downgrade to Free at period end"
+                        pendingLabel="Scheduling downgrade..."
+                        successMessage={(until) =>
+                          `Downgrade scheduled. Your current paid plan stays active until ${until}.`
+                        }
+                      />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {cancellationScheduled
+                        ? `Free starts after ${formatDate(billing.currentPeriodEnd)}.`
+                        : "Your current paid plan remains active until the period ends."}
+                    </p>
+                  </div>
                 ) : canStartSubscription ? (
                   <RazorpayCheckoutButton
                     organizationId={organization.id}
@@ -299,13 +341,17 @@ export default async function PlansPage() {
                     userName={user.name}
                     userEmail={user.email}
                   />
+                ) : paid && hasAuthenticatedPendingCheckout ? (
+                  <Button disabled variant="outline" className="w-full">
+                    Payment authentication pending
+                  </Button>
                 ) : paid && hasNonTerminalRazorpaySubscription ? (
                   <Button disabled variant="outline" className="w-full">
                     {canCancelCurrentSubscription
                       ? "Cancel current plan first"
-                      : "Payment authentication pending"}
+                      : `Available after ${formatDate(billing.currentPeriodEnd)}`}
                   </Button>
-                ) : paid ? (
+                ) : paid && hasRazorpayPlanId ? (
                   <RazorpayCheckoutButton
                     organizationId={organization.id}
                     planSlug={plan.slug}
@@ -313,6 +359,10 @@ export default async function PlansPage() {
                     userName={user.name}
                     userEmail={user.email}
                   />
+                ) : paid ? (
+                  <Button disabled variant="outline" className="w-full">
+                    Razorpay plan ID required
+                  </Button>
                 ) : (
                   <Button disabled variant="outline" className="w-full">
                     Free plan
@@ -322,6 +372,45 @@ export default async function PlansPage() {
             </Card>
           );
         })}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-2xl font-semibold tracking-tight">
+            Buy extra credits
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            Credits are consumed differently by channel. Email uses fewer
+            credits. SMS and WhatsApp use more because telecom/provider costs
+            are higher. WhatsApp final availability and rates depend on country
+            and message category. Plan limits protect against abuse. Extra
+            credits can be purchased anytime.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-4">
+          {activeAddonPacks.map((pack) => (
+            <Card key={pack.slug}>
+              <CardHeader>
+                <CardTitle>{pack.name}</CardTitle>
+                <p className="text-2xl font-semibold">
+                  ₹{pack.priceInr.toLocaleString("en-IN")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {pack.description}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm font-medium">
+                  {pack.credits.toLocaleString("en-IN")} prepaid credits
+                </p>
+                <AddonCreditCheckoutButton
+                  organizationId={organization.id}
+                  addonPackSlug={pack.slug}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
     </div>
   );

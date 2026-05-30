@@ -22,6 +22,7 @@ export const organizationRole = pgEnum("organization_role", [
 export const organizationPlan = pgEnum("organization_plan", [
   "free",
   "starter",
+  "growth",
   "premium",
   "business",
   "enterprise",
