@@ -1,8 +1,5 @@
-// components/home/faq-preview.tsx
-
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-
 import {
   Accordion,
   AccordionContent,

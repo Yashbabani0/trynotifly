@@ -6,7 +6,6 @@ import { Features } from "@/components/home/features";
 import { Hero } from "@/components/home/hero";
 import { PricingPreview } from "@/components/home/pricing-preview";
 import { Security } from "@/components/home/security";
-import React from "react";
 
 export default function Home() {
   return (

@@ -1,5 +1,3 @@
-// components/home/features.tsx
-
 import {
   BarChart3,
   KeyRound,

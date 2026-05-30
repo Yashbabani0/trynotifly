@@ -1,5 +1,3 @@
-// components/home/security.tsx
-
 import {
   ShieldCheck,
   Server,

@@ -1,5 +1,3 @@
-// components/home/dashboard-preview.tsx
-
 import {
   Activity,
   AlertTriangle,
