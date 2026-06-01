@@ -1,3 +1,10 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../ui/accordion";
+
 type PricingFaqItem = {
   question: string;
   answer: string;
@@ -21,16 +28,18 @@ export function PricingFaq({ faqs }: PricingFaqProps) {
           </p>
         </div>
 
-        <div className="divide-y rounded-3xl border bg-card px-6 shadow-sm">
-          {faqs.map((faq) => (
-            <div key={faq.question} className="py-6">
-              <h3 className="font-semibold">{faq.question}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <Accordion type="single" collapsible className="w-full">
+          {faqs.map((faq, index) => (
+            <AccordionItem key={faq.question} value={`item-${index}`}>
+              <AccordionTrigger className="text-left text-base font-medium">
+                {faq.question}
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
                 {faq.answer}
-              </p>
-            </div>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </div>
     </section>
   );

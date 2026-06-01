@@ -18,6 +18,7 @@ const footerLinks = {
     { label: "FAQ", href: "/faq" },
     { label: "Security", href: "/security" },
     { label: "Status", href: "/status" },
+    { label: "Use Cases", href: "/use-cases" },
   ],
   Company: [
     { label: "About", href: "/about" },
