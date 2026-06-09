@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["postgres", "@trynotifly/db", "drizzle-orm"],
+  /* config options here */
 };
 
 export default nextConfig;
